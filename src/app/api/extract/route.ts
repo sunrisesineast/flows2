@@ -3,6 +3,8 @@ import { getGeminiModel, PASSPORT_PROMPT } from "@/lib/gemini";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getSetting } from "@/lib/site-settings";
+
+export const maxDuration = 60;
 import {
   sanitizeText,
   sanitizeAlphanumeric,

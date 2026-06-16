@@ -50,6 +50,8 @@ Sign up at **[renttools.io](https://renttools.io)** — no credit card, per-acco
 
 You can also self-host the same code on any cheap Linux box. The maintainer's instance runs on a $4 DigitalOcean droplet behind Cloudflare. See [docs/DROPLET-SETUP.md](docs/DROPLET-SETUP.md) for the runbook.
 
+To deploy your own hosted instance on Vercel + Turso (free tier friendly), see [docs/VERCEL-TURSO.md](docs/VERCEL-TURSO.md).
+
 ---
 
 ## FAQ

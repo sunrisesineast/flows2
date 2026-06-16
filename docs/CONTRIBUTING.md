@@ -30,7 +30,7 @@ npm run db:seed
 npm run dev
 ```
 
-For deeper deployment guidance see [docs/DROPLET-SETUP.md](DROPLET-SETUP.md) — production droplet runbook (systemd, nginx, cron, backups).
+For deeper deployment guidance see [docs/DROPLET-SETUP.md](DROPLET-SETUP.md) — production droplet runbook (systemd, nginx, cron, backups). For Vercel + Turso, see [docs/VERCEL-TURSO.md](VERCEL-TURSO.md).
 
 ## Security & privacy — what must never reach git
 

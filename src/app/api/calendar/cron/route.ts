@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { syncAllCalendars } from "@/lib/calendar-sync";
 import { prisma } from "@/lib/prisma";
 
+export const maxDuration = 60;
+
 /**
  * GET /api/calendar/cron?secret=xxx
  * Called by the system cron on the droplet (scripts/cron-sync.sh) every 10 min.
