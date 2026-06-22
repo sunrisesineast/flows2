@@ -16,6 +16,7 @@ import { SyncSettings } from "@/components/sync-settings";
 import { GuestFormPage } from "@/components/guest-form-page";
 import { TasksPanel } from "@/components/tasks-panel";
 import { ReportsPanel } from "@/components/reports-panel";
+import { FinancePanel } from "@/components/finance-panel";
 import { SyncAlertsBanner } from "@/components/sync-alerts-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { SupportFooter } from "@/components/support-footer";
@@ -307,6 +308,10 @@ function AppContent({
       // property selected, the panel shows a meaningful aggregate
       // across every property in `properties`.
       return <ReportsPanel property={selectedProperty ?? null} properties={properties} />;
+    }
+
+    if (activeView === "finance") {
+      return <FinancePanel property={selectedProperty ?? null} properties={properties} />;
     }
 
     // Cleaning is dual-mode like Reports: cross-property when no

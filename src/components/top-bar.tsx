@@ -142,7 +142,7 @@ const COPY: Record<Locale, CopyShape> = {
   },
 };
 
-export type AppView = "dashboard" | "calendar" | "cleaning" | "sync" | "guest-form" | "guests" | "settings" | "tasks" | "reports" | "profile";
+export type AppView = "dashboard" | "calendar" | "cleaning" | "sync" | "guest-form" | "guests" | "settings" | "tasks" | "reports" | "finance" | "profile";
 
 interface GuestSearchResult {
   guestId: number;

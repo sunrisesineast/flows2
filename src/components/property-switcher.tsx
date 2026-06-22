@@ -25,7 +25,7 @@ interface PropertySwitcherProps {
   /** view to navigate to when a property pill is clicked. Keeps the
    *  user on the same surface (cleaning / reports / calendar / sync)
    *  as they switch scope. */
-  view: "calendar" | "cleaning" | "reports" | "sync";
+  view: "calendar" | "cleaning" | "reports" | "finance" | "sync";
   /** Pass false for views that don't support a portfolio aggregate
    *  (calendar, sync). The "All properties" pill is hidden in that
    *  case since it would deep-link to a non-existent state. */
