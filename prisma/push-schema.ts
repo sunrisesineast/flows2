@@ -1,23 +1,31 @@
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../src/generated/prisma/client";
-import "dotenv/config";
+import dotenv from "dotenv";
 import path from "node:path";
 import fs from "node:fs";
 
+// Prefer .env.local (dev) then .env (fallback)
+dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
 function resolveDbConfig(): { url: string; authToken?: string; label: string } {
+  // Prefer Turso if configured, even when DATABASE_URL is present.
+  if (process.env.TURSO_DATABASE_URL) {
+    if (!process.env.TURSO_AUTH_TOKEN) {
+      throw new Error("TURSO_DATABASE_URL is set but TURSO_AUTH_TOKEN is missing.");
+    }
+    return {
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+      label: `Turso (${process.env.TURSO_DATABASE_URL})`,
+    };
+  }
   const dbUrl = process.env.DATABASE_URL;
   if (dbUrl?.startsWith("file:")) {
     const rel = dbUrl.slice("file:".length);
     const abs = path.isAbsolute(rel) ? rel : path.resolve(process.cwd(), rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     return { url: `file:${abs}`, label: `local SQLite at ${abs}` };
-  }
-  if (process.env.TURSO_DATABASE_URL) {
-    return {
-      url: process.env.TURSO_DATABASE_URL,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-      label: `Turso (${process.env.TURSO_DATABASE_URL})`,
-    };
   }
   throw new Error("No database configured. Set DATABASE_URL=file:... or TURSO_DATABASE_URL.");
 }

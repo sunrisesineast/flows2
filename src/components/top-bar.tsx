@@ -9,11 +9,6 @@ import { SUPPORTED_LOCALES } from "@/lib/i18n/alternates";
 import type { Property } from "@/lib/types";
 
 interface CopyShape {
-  tabDashboard: string;
-  tabCalendar: string;
-  tabCleaning: string;
-  tabReports: string;
-  tabProperty: string;
   allProperties: string;
   dashboardAll: string;
   countLabel: (resCount: number, guestCount: number) => string;
@@ -37,11 +32,6 @@ interface CopyShape {
 
 const COPY: Record<Locale, CopyShape> = {
   en: {
-    tabDashboard: "Dashboard",
-    tabCalendar: "Calendar",
-    tabCleaning: "Cleaning",
-    tabReports: "Reports",
-    tabProperty: "Property",
     allProperties: "All properties",
     dashboardAll: "Dashboard (all)",
     countLabel: (resCount, guestCount) =>
@@ -64,11 +54,6 @@ const COPY: Record<Locale, CopyShape> = {
     refreshAllDone: "Calendars updated",
   },
   ru: {
-    tabDashboard: "Обзор",
-    tabCalendar: "Календарь",
-    tabCleaning: "Уборки",
-    tabReports: "Отчёты",
-    tabProperty: "Объект",
     allProperties: "Все объекты",
     dashboardAll: "Обзор (все объекты)",
     countLabel: (resCount, guestCount) => `${resCount} брон., ${guestCount} гостей`,
@@ -90,11 +75,6 @@ const COPY: Record<Locale, CopyShape> = {
     refreshAllDone: "Календари обновлены",
   },
   de: {
-    tabDashboard: "Übersicht",
-    tabCalendar: "Kalender",
-    tabCleaning: "Reinigung",
-    tabReports: "Berichte",
-    tabProperty: "Unterkunft",
     allProperties: "Alle Unterkünfte",
     dashboardAll: "Übersicht (alle Unterkünfte)",
     countLabel: (resCount, guestCount) =>
@@ -117,11 +97,6 @@ const COPY: Record<Locale, CopyShape> = {
     refreshAllDone: "Kalender aktualisiert",
   },
   fr: {
-    tabDashboard: "Tableau de bord",
-    tabCalendar: "Calendrier",
-    tabCleaning: "Ménage",
-    tabReports: "Rapports",
-    tabProperty: "Logement",
     allProperties: "Tous les logements",
     dashboardAll: "Tableau de bord (tous les logements)",
     countLabel: (resCount, guestCount) =>
@@ -144,11 +119,6 @@ const COPY: Record<Locale, CopyShape> = {
     refreshAllDone: "Calendriers actualisés",
   },
   es: {
-    tabDashboard: "Panel",
-    tabCalendar: "Calendario",
-    tabCleaning: "Limpieza",
-    tabReports: "Informes",
-    tabProperty: "Alojamiento",
     allProperties: "Todos los alojamientos",
     dashboardAll: "Panel (todos los alojamientos)",
     countLabel: (resCount, guestCount) =>
@@ -202,6 +172,8 @@ interface TopBarProps {
   username: string;
   userRole: string;
   onLogout: () => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export function TopBar({
@@ -215,6 +187,8 @@ export function TopBar({
   username,
   userRole,
   onLogout,
+  sidebarOpen,
+  onToggleSidebar,
 }: TopBarProps) {
   const isSuperAdmin = userRole === "superadmin";
   const { t, locale, setLocale } = useI18n();
@@ -302,30 +276,6 @@ export function TopBar({
     }
   };
 
-  // Property-required views — Calendar / Cleaning / Settings only make
-  // sense in a property context. If user clicks one with no property
-  // selected, auto-pick the first one in the same nav.
-  const goToTab = (view: AppView) => {
-    // Dashboard is the portfolio-wide view; clicking it always drops
-    // the property scope so the user lands on the home/overview no
-    // matter which property they were inside.
-    if (view === "dashboard") {
-      onNavigate({ property: null, reservation: null, view: "dashboard" });
-      return;
-    }
-    // Calendar is the only tab that strictly requires a property —
-    // there is no cross-property calendar view (a single grid can't
-    // show 5 properties' bars meaningfully). Cleaning and Reports
-    // are dual-mode: routing them with no property lands on the
-    // global aggregate view, not a forced first-property pick.
-    const requiresProperty = view === "calendar" || view === "sync";
-    if (requiresProperty && !selectedPropertyId && properties.length > 0) {
-      onNavigate({ property: properties[0].id, view });
-    } else {
-      onChangeView(view);
-    }
-  };
-
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
   // Refresh all of the current user's calendars. POST with no body —
@@ -342,21 +292,6 @@ export function TopBar({
     }
   };
 
-  // All five tabs render at every scope so the header stays put.
-  // Property-required tabs (Calendar, Property) auto-pick the first
-  // property when clicked without a selection — see goToTab above.
-  // The property selector to the left of the strip is the
-  // canonical scope switcher; the tabs only switch *view* within
-  // that scope, so they don't need to vanish based on selection.
-  // Stripe / Linear / GitHub all use the same stable-header pattern.
-  const tabs: { key: AppView; label: string; show: boolean }[] = [
-    { key: "dashboard", label: c.tabDashboard, show: true },
-    { key: "calendar", label: c.tabCalendar, show: true },
-    { key: "cleaning", label: c.tabCleaning, show: true },
-    { key: "reports", label: c.tabReports, show: true },
-    { key: "sync", label: c.tabProperty, show: true },
-  ];
-
   return (
     <header className="relative z-40 border-b border-[var(--line)] bg-[var(--bg-2)]">
       {/* Inner wrapper caps content width on ultra-wide screens (Airbnb
@@ -368,8 +303,19 @@ export function TopBar({
       {/* Main bar — h-[72px] roughly matches Airbnb's host header, gives
           enough breathing room around the logo + nav cluster. */}
       <div className="relative flex items-center justify-between gap-3 h-[72px] px-3 sm:px-5">
-        {/* LEFT: Logo + Property selector */}
-        <div className="flex items-center gap-3 min-w-0 z-10 max-w-[55%] sm:max-w-none">
+        {/* LEFT: Sidebar toggle + Logo + Property selector */}
+        <div className="flex items-center gap-2 min-w-0 z-10 max-w-[55%] sm:max-w-none sm:gap-3">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--ink-3)] transition-colors hover:bg-[var(--bg-3)] hover:text-[var(--ink)]"
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            aria-expanded={sidebarOpen}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5" />
+            </svg>
+          </button>
           <button
             onClick={() => onNavigate({ property: null, reservation: null, view: "dashboard" })}
             className="group flex items-center gap-2 shrink-0 rounded-xl text-[var(--ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-accent)]/50"
@@ -536,23 +482,6 @@ export function TopBar({
             )}
           </div>
         </div>
-
-        {/* CENTER: Tabs (lg+ only). Absolute-centered like Airbnb so the
-            left & right groups can size naturally without throwing off
-            the centerline. pointer-events trick lets the wider invisible
-            wrapper not eat clicks on logo/avatar. */}
-        <nav className="absolute inset-x-0 top-0 bottom-0 mx-auto pointer-events-none hidden lg:flex items-center justify-center" aria-label="Primary">
-          <div className="pointer-events-auto flex items-center">
-            {tabs.filter(tab => tab.show).map(tab => (
-              <NavTab
-                key={tab.key}
-                label={tab.label}
-                active={activeView === tab.key}
-                onClick={() => goToTab(tab.key)}
-              />
-            ))}
-          </div>
-        </nav>
 
         {/* RIGHT: Search + Avatar */}
         <div className="flex items-center gap-1 z-10 shrink-0">
@@ -821,46 +750,7 @@ export function TopBar({
           </div>
         </div>
       </div>
-
-      {/* Mobile / medium tabs row — visible whenever the centered
-          desktop nav above is hidden. Same labels, horizontally
-          scrollable. justify-start (was justify-center) so the user
-          can SEE the leftmost tab as their starting point — centered
-          tabs on a 375px viewport pushed Dashboard / Calendar partway
-          off the left edge with no visible scroll affordance.
-          scrollbar-none keeps the row tidy on browsers that show a
-          permanent scrollbar; the fade-on-edge gradient hints at
-          horizontal overflow without taking vertical space. */}
-      <nav
-        className="flex items-center gap-1 overflow-x-auto whitespace-nowrap px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-5 lg:hidden"
-        aria-label="Primary mobile"
-      >
-        {tabs.filter(tab => tab.show).map(tab => (
-          <NavTab
-            key={tab.key}
-            label={tab.label}
-            active={activeView === tab.key}
-            onClick={() => goToTab(tab.key)}
-          />
-        ))}
-      </nav>
       </div>
     </header>
-  );
-}
-
-function NavTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative px-4 py-3 text-sm font-medium transition-colors ${
-        active ? "text-[var(--ink)]" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
-      }`}
-    >
-      {label}
-      {active && (
-        <span className="pointer-events-none absolute left-3 right-3 bottom-0 h-[2px] rounded-full bg-[var(--ink)]" />
-      )}
-    </button>
   );
 }
