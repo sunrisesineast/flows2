@@ -5,6 +5,15 @@ import Link from "next/link";
 import { DateSlider } from "@/components/date-slider";
 import { CleaningSchedule, type CleanerAssignmentInfo } from "@/components/cleaning-schedule";
 import { DashboardOnboarding } from "@/components/dashboard-onboarding";
+import { BookingRequests } from "@/components/booking-requests";
+import { OperationsBoard } from "@/components/operations-board";
+import { OccupancyHeatMap } from "@/components/occupancy-heat-map";
+import { ChannelPerformance } from "@/components/channel-performance";
+import { FinanceOverview } from "@/components/finance-overview";
+import { ExpensesVsBudget } from "@/components/expenses-vs-budget";
+import { QuickActions } from "@/components/quick-actions";
+import { ProTipBar } from "@/components/pro-tip-bar";
+import { MetricCard } from "@/components/metric-card";
 import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
 import type { Property, CalendarLink, DateOverride } from "@/lib/types";
@@ -1023,6 +1032,92 @@ export function Dashboard({
         )}
       </div>
 
+      {/* ponytail: mock data — wire to real metrics when backend exists */}
+      {!isZeroProperties && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <MetricCard
+            compact
+            title="Occupancy Today"
+            value="68%"
+            statusLabel="15 / 22 Rooms"
+            statusValue="↑ 12%"
+            accentColor="#10b981"
+            statusColor="#10b981"
+            chartData={[42, 48, 45, 52, 58, 55, 62, 68]}
+          />
+          <MetricCard
+            compact
+            title="Today's Revenue"
+            value="₺ 18,750"
+            statusLabel="vs yesterday"
+            statusValue="↑ 8%"
+            accentColor="#8b5cf6"
+            statusColor="#10b981"
+            chartData={[12, 14, 13, 15, 16, 17, 18, 19]}
+          />
+          <MetricCard
+            compact
+            title="Check-ins"
+            value="4"
+            statusLabel="Today"
+            statusValue="2 Pending"
+            accentColor="#3b82f6"
+            chartData={[1, 2, 1, 3, 2, 4, 3, 4]}
+          />
+          <MetricCard
+            compact
+            title="Check-outs"
+            value="3"
+            statusLabel="Today"
+            statusValue="1 Pending"
+            accentColor="#f97316"
+            chartData={[2, 1, 3, 2, 4, 3, 2, 3]}
+          />
+          <MetricCard
+            compact
+            title="Open Tasks"
+            value="18"
+            statusLabel="Total"
+            statusValue="5 Overdue"
+            accentColor="#ef4444"
+            chartData={[10, 12, 11, 14, 15, 16, 17, 18]}
+          />
+          <MetricCard
+            compact
+            title="Guest Rating"
+            value="4.6"
+            valueSuffix="★"
+            statusLabel="This month"
+            statusValue="↑ 0.3"
+            accentColor="#10b981"
+            statusColor="#10b981"
+            chartData={[4.2, 4.3, 4.4, 4.3, 4.5, 4.4, 4.5, 4.6]}
+          />
+        </div>
+      )}
+
+      {!isZeroProperties && (
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.82fr)]">
+          <BookingRequests className="min-w-0" />
+          <OperationsBoard className="min-w-0" />
+          <OccupancyHeatMap className="min-w-0 self-start" />
+        </div>
+      )}
+
+      {!isZeroProperties && (
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.82fr)]">
+          <ChannelPerformance className="min-w-0" />
+          <FinanceOverview className="min-w-0" />
+          <ExpensesVsBudget className="min-w-0" />
+        </div>
+      )}
+
+      {!isZeroProperties && (
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.82fr)]">
+          <QuickActions className="min-w-0" />
+        </div>
+      )}
+
       {/* Zero-property onboarding — empty-state hijack. Replaces the
           earlier "Welcome modal + add-property hero" with an inline
           two-step wizard (property name → connect calendar) so the
@@ -1611,6 +1706,8 @@ export function Dashboard({
           />
         </div>
       )}
+
+      {!isZeroProperties && <ProTipBar />}
     </div>
     </div>
   );
