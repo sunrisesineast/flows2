@@ -79,7 +79,9 @@ export async function syncAllCalendars(opts?: {
   // Get the calendar links to sync, grouped by property. When scoped,
   // only the requested properties' links are fetched.
   const links = await prisma.calendarLink.findMany({
-    where: opts?.propertyIds ? { propertyId: { in: opts.propertyIds } } : undefined,
+    where: opts?.propertyIds
+      ? { propertyId: { in: opts.propertyIds }, property: { rentalMode: "whole" } }
+      : { property: { rentalMode: "whole" } },
     include: { property: true },
   });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { parseRentalMode } from "@/lib/rental-mode";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
         orderBy: { checkIn: "asc" as const },
         include: { _count: { select: { guests: true } } },
       },
+      _count: { select: { rooms: true } },
     };
     const orderBy = { createdAt: "desc" as const };
     // Properties accessible to a regular/superadmin user: ones they own OR manage.
@@ -58,14 +60,23 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { name } = await request.json();
+    const { name, rentalMode: rentalModeRaw } = await request.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+    const rentalMode = rentalModeRaw !== undefined ? parseRentalMode(rentalModeRaw) : "whole";
+    if (rentalModeRaw !== undefined && rentalMode === null) {
+      return NextResponse.json({ error: "Invalid rentalMode" }, { status: 400 });
     }
     const property = await prisma.property.create({
       // minNights defaults to 1 — most hosts accept single-night stays;
       // those who want a floor raise it in Sync settings.
-      data: { name: name.trim(), userId: session.userId, minNights: 1 },
+      data: {
+        name: name.trim(),
+        userId: session.userId,
+        minNights: 1,
+        rentalMode: rentalMode ?? "whole",
+      },
     });
     await logAudit(session.userId, "create", "property", property.id, { name: property.name });
     return NextResponse.json(property);

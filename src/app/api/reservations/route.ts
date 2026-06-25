@@ -3,6 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty, listAccessiblePropertyIds } from "@/lib/ownership";
+import {
+  assertRoomBelongsToProperty,
+  getPropertyRentalMode,
+  reservationOverlapWhere,
+  validateReservationScope,
+} from "@/lib/rental-mode";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,10 +16,17 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const propertyId = request.nextUrl.searchParams.get("propertyId");
+    const roomIdParam = request.nextUrl.searchParams.get("roomId");
     const accessibleIds = await listAccessiblePropertyIds(session.userId, session.role);
-    const where = propertyId
-      ? { propertyId: parseInt(propertyId), property: { id: { in: accessibleIds } } }
-      : { property: { id: { in: accessibleIds } } };
+    const where: {
+      property: { id: { in: number[] } };
+      propertyId?: number;
+      roomId?: number;
+    } = {
+      property: { id: { in: accessibleIds } },
+    };
+    if (propertyId) where.propertyId = parseInt(propertyId);
+    if (roomIdParam) where.roomId = parseInt(roomIdParam);
     const reservations = await prisma.reservation.findMany({
       where,
       orderBy: { checkIn: "asc" },
@@ -31,12 +44,31 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { name, checkIn, checkOut, platform, propertyId, linkedEventUid } = await request.json();
+    const { name, checkIn, checkOut, platform, propertyId, roomId, linkedEventUid } =
+      await request.json();
     if (!name?.trim() || !checkIn || !checkOut || !propertyId) {
       return NextResponse.json({ error: "All fields required" }, { status: 400 });
     }
 
     if (!(await canManageProperty(propertyId, session.userId, session.role))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const rentalMode = (await getPropertyRentalMode(propertyId)) ?? "whole";
+    const scopeError = validateReservationScope(rentalMode, {
+      propertyId,
+      roomId: roomId ?? null,
+    });
+    if (scopeError) {
+      return NextResponse.json({ error: scopeError.error }, { status: scopeError.status });
+    }
+
+    const parsedRoomId =
+      rentalMode === "per_room" ? Number(roomId) : null;
+    if (
+      rentalMode === "per_room" &&
+      !(await assertRoomBelongsToProperty(parsedRoomId!, propertyId))
+    ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -56,11 +88,10 @@ export async function POST(request: NextRequest) {
     // property. The host can't have two reservations covering the same
     // night.
     const overlap = await prisma.reservation.findFirst({
-      where: {
-        propertyId,
-        checkIn: { lt: checkOutDate },
-        checkOut: { gt: checkInDate },
-      },
+      where: reservationOverlapWhere(rentalMode, propertyId, parsedRoomId, {
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+      }),
       select: { name: true, checkIn: true, checkOut: true },
     });
     if (overlap) {
@@ -94,28 +125,30 @@ export async function POST(request: NextRequest) {
     // events.
     const startDateStr = checkInDate.toISOString().substring(0, 10);
     const endDateStr = checkOutDate.toISOString().substring(0, 10);
-    const syncedOverlap = await prisma.calendarEvent.findFirst({
-      where: {
-        propertyId,
-        startDate: { lt: endDateStr },
-        endDate: { gt: startDateStr },
-        ...(linkedEventUid ? { uid: { not: linkedEventUid } } : {}),
-      },
-      select: { summary: true, platform: true, startDate: true, endDate: true },
-    });
-    if (syncedOverlap) {
-      return NextResponse.json(
-        {
-          error: "Overlapping booking from another platform",
-          existing: {
-            name: syncedOverlap.summary || syncedOverlap.platform,
-            checkIn: syncedOverlap.startDate,
-            checkOut: syncedOverlap.endDate,
-            platform: syncedOverlap.platform,
-          },
+    if (rentalMode === "whole") {
+      const syncedOverlap = await prisma.calendarEvent.findFirst({
+        where: {
+          propertyId,
+          startDate: { lt: endDateStr },
+          endDate: { gt: startDateStr },
+          ...(linkedEventUid ? { uid: { not: linkedEventUid } } : {}),
         },
-        { status: 409 }
-      );
+        select: { summary: true, platform: true, startDate: true, endDate: true },
+      });
+      if (syncedOverlap) {
+        return NextResponse.json(
+          {
+            error: "Overlapping booking from another platform",
+            existing: {
+              name: syncedOverlap.summary || syncedOverlap.platform,
+              checkIn: syncedOverlap.startDate,
+              checkOut: syncedOverlap.endDate,
+              platform: syncedOverlap.platform,
+            },
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const reservation = await prisma.reservation.create({
@@ -126,6 +159,7 @@ export async function POST(request: NextRequest) {
         platform: platform || "airbnb",
         linkedEventUid: linkedEventUid || null,
         propertyId,
+        roomId: parsedRoomId,
       },
     });
 
@@ -154,7 +188,9 @@ export async function POST(request: NextRequest) {
     if (datesToClear.length > 0) {
       await prisma.dateOverride.deleteMany({
         where: {
-          propertyId,
+          ...(rentalMode === "per_room" && parsedRoomId
+            ? { roomId: parsedRoomId }
+            : { propertyId }),
           date: { in: datesToClear },
           type: { in: ["open", "closed"] },
         },

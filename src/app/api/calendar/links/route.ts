@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty } from "@/lib/ownership";
+import { getPropertyRentalMode, wholePropertySyncBlocked } from "@/lib/rental-mode";
 
 // GET /api/calendar/links?propertyId=1
 export async function GET(request: NextRequest) {
@@ -68,6 +69,12 @@ export async function POST(request: NextRequest) {
 
     if (!(await canManageProperty(Number(propertyId), session.userId, session.role))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const rentalMode = (await getPropertyRentalMode(Number(propertyId))) ?? "whole";
+    const syncBlocked = wholePropertySyncBlocked(rentalMode);
+    if (syncBlocked) {
+      return NextResponse.json({ error: syncBlocked.error }, { status: syncBlocked.status });
     }
 
     // Check if link already exists for this property+platform

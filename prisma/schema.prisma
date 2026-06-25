@@ -103,6 +103,7 @@ model Property {
   userId         Int
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
+  rentalMode     String           @default("whole") // "whole" | "per_room" — immutable after creation
   minNights      Int              @default(1)
   checkInTime    String           @default("14:00")
   checkOutTime   String           @default("12:00")
@@ -112,6 +113,7 @@ model Property {
   feedSlug       String?          @unique // durable URL identifier for the iCal feed; minted at creation, never changes
   createdAt      DateTime         @default(now())
   updatedAt      DateTime?
+  rooms              Room[]
   reservations       Reservation[]
   calendarLinks      CalendarLink[]
   calendarEvents     CalendarEvent[]
@@ -124,6 +126,23 @@ model Property {
   guestFormTemplates GuestFormTemplate[]
 
   @@index([userId])
+}
+
+model Room {
+  id         Int      @id @default(autoincrement())
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  reservations       Reservation[]
+  dateOverrides      DateOverride[]
+  cleaningRecords    CleaningRecord[]
+  messageTemplates   MessageTemplate[]
+  guestFormTemplates GuestFormTemplate[]
+
+  @@index([propertyId])
 }
 
 model PropertyManager {
@@ -160,24 +179,29 @@ model PropertyManagerInvite {
 }
 
 model MessageTemplate {
-  id             Int      @id @default(autoincrement())
-  propertyId     Int
-  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  id             Int       @id @default(autoincrement())
+  propertyId     Int?
+  property       Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId         Int?
+  room           Room?     @relation(fields: [roomId], references: [id], onDelete: Cascade)
   name           String
-  language       String   @default("en")
-  subject        String   @default("")
+  language       String    @default("en")
+  subject        String    @default("")
   body           String
-  sendOffsetDays Int      @default(0)
-  createdAt      DateTime @default(now())
+  sendOffsetDays Int       @default(0)
+  createdAt      DateTime  @default(now())
   updatedAt      DateTime?
 
   @@index([propertyId])
+  @@index([roomId])
 }
 
 model CleaningRecord {
   id            Int      @id @default(autoincrement())
   propertyId    Int
   property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId        Int?
+  room          Room?    @relation(fields: [roomId], references: [id], onDelete: Cascade)
   date          String   // YYYY-MM-DD
   status        String   @default("pending") // "pending" | "done" | "skipped"
   doneAt        DateTime?
@@ -187,8 +211,9 @@ model CleaningRecord {
   createdAt     DateTime @default(now())
   updatedAt     DateTime?
 
-  @@unique([propertyId, date])
+  @@unique([roomId, date])
   @@index([propertyId, date])
+  @@index([roomId, date])
 }
 
 // Cleaner profile (RT-25.10). Account-level entity owned by a host;
@@ -297,22 +322,30 @@ model Reservation {
   phone           String?
   propertyId      Int
   property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId          Int?
+  room            Room?    @relation(fields: [roomId], references: [id], onDelete: Cascade)
   guests          Guest[]
   guestFormSubmissions GuestFormSubmission[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([roomId])
 }
 
 model DateOverride {
-  id         Int      @id @default(autoincrement())
-  propertyId Int
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  date       String   // YYYY-MM-DD
-  type       String   // "open" or "closed"
-  note       String   @default("")
-  createdAt  DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  propertyId Int?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId     Int?
+  room       Room?     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  date       String    // YYYY-MM-DD
+  type       String    // "open" or "closed"
+  note       String    @default("")
+  createdAt  DateTime  @default(now())
 
   @@unique([propertyId, date])
+  @@unique([roomId, date])
+  @@index([roomId, date])
 }
 
 model AuditLog {
@@ -511,8 +544,10 @@ model SeoOverride {
 // previously-collected answers.
 model GuestFormTemplate {
   id          Int                   @id @default(autoincrement())
-  propertyId  Int
-  property    Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId  Int?
+  property    Property?             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomId      Int?
+  room        Room?                 @relation(fields: [roomId], references: [id], onDelete: Cascade)
   name        String                @default("")
   // JSON: ordered list of { id: string, type: string, label: string,
   //   required: boolean, options?: string[] }. Field types:
@@ -530,6 +565,7 @@ model GuestFormTemplate {
   updatedAt   DateTime?
 
   @@index([propertyId])
+  @@index([roomId])
 }
 
 model GuestFormSubmission {

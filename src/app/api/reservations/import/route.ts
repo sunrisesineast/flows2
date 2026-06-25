@@ -3,12 +3,19 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty, listAccessiblePropertyIds } from "@/lib/ownership";
+import {
+  assertRoomBelongsToProperty,
+  getPropertyRentalMode,
+  reservationOverlapWhere,
+  validateReservationScope,
+} from "@/lib/rental-mode";
 
 export const dynamic = "force-dynamic";
 
 interface ParsedRow {
   rowNumber: number;
   propertyId: number;
+  roomId: number | null;
   name: string;
   platform: string;
   checkIn: Date;
@@ -157,17 +164,42 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      validRows.push({ rowNumber, propertyId, name, platform, checkIn, checkOut });
+      const rentalMode = (await getPropertyRentalMode(propertyId)) ?? "whole";
+      const roomIdRaw = headerIndex.roomId !== undefined ? get("roomId") : "";
+      const roomId = roomIdRaw ? parseInt(roomIdRaw) : null;
+      const scopeError = validateReservationScope(rentalMode, { propertyId, roomId });
+      if (scopeError) {
+        results.push({ rowNumber, status: "error", reason: scopeError.error });
+        continue;
+      }
+      if (
+        rentalMode === "per_room" &&
+        roomId != null &&
+        !(await assertRoomBelongsToProperty(roomId, propertyId))
+      ) {
+        results.push({ rowNumber, status: "error", reason: "Room not found on property" });
+        continue;
+      }
+
+      validRows.push({
+        rowNumber,
+        propertyId,
+        roomId: rentalMode === "per_room" ? roomId : null,
+        name,
+        platform,
+        checkIn,
+        checkOut,
+      });
     }
 
     // Check overlaps and (if not dry-run) insert.
     for (const v of validRows) {
+      const rentalMode = (await getPropertyRentalMode(v.propertyId)) ?? "whole";
       const overlap = await prisma.reservation.findFirst({
-        where: {
-          propertyId: v.propertyId,
-          checkIn: { lt: v.checkOut },
-          checkOut: { gt: v.checkIn },
-        },
+        where: reservationOverlapWhere(rentalMode, v.propertyId, v.roomId, {
+          checkIn: v.checkIn,
+          checkOut: v.checkOut,
+        }),
         select: { id: true, name: true },
       });
       if (overlap) {
@@ -191,6 +223,7 @@ export async function POST(request: NextRequest) {
           checkOut: v.checkOut,
           platform: v.platform,
           propertyId: v.propertyId,
+          roomId: v.roomId,
         },
       });
       await logAudit(session.userId, "create", "reservation", created.id, {

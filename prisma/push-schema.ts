@@ -247,6 +247,24 @@ CREATE TABLE IF NOT EXISTS "SyncLog" (
     // chat WhatsApp / Telegram deeplinks on reservations that have no
     // passport guests yet (or only one).
     `ALTER TABLE "Reservation" ADD COLUMN "phone" TEXT`,
+    // Rooms + rentalMode — property can be rented as a whole (sync on)
+    // or per-room inventory (sync off). rentalMode is immutable after
+    // creation; existing rows default to whole.
+    `ALTER TABLE "Property" ADD COLUMN "rentalMode" TEXT NOT NULL DEFAULT 'whole'`,
+    `ALTER TABLE "Reservation" ADD COLUMN "roomId" INTEGER`,
+    `CREATE INDEX IF NOT EXISTS "Reservation_roomId_idx" ON "Reservation"("roomId")`,
+    `ALTER TABLE "DateOverride" ADD COLUMN "roomId" INTEGER`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "DateOverride_roomId_date_key" ON "DateOverride"("roomId", "date")`,
+    `CREATE INDEX IF NOT EXISTS "DateOverride_roomId_date_idx" ON "DateOverride"("roomId", "date")`,
+    `ALTER TABLE "CleaningRecord" ADD COLUMN "roomId" INTEGER`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "CleaningRecord_roomId_date_key" ON "CleaningRecord"("roomId", "date")`,
+    `CREATE INDEX IF NOT EXISTS "CleaningRecord_roomId_date_idx" ON "CleaningRecord"("roomId", "date")`,
+    `ALTER TABLE "MessageTemplate" ADD COLUMN "roomId" INTEGER`,
+    `CREATE INDEX IF NOT EXISTS "MessageTemplate_roomId_idx" ON "MessageTemplate"("roomId")`,
+    `ALTER TABLE "GuestFormTemplate" ADD COLUMN "roomId" INTEGER`,
+    `CREATE INDEX IF NOT EXISTS "GuestFormTemplate_roomId_idx" ON "GuestFormTemplate"("roomId")`,
+    // Per-room cleaning rows share propertyId — drop property+date uniqueness.
+    `DROP INDEX IF EXISTS "CleaningRecord_propertyId_date_key"`,
   ];
 
   // Feedback table — site-wide visitor feedback queue. New table, so we
@@ -1081,6 +1099,151 @@ CREATE INDEX IF NOT EXISTS "EmailCode_email_purpose_idx" ON "EmailCode"("email",
     } catch {
       // Table/index already exists
     }
+  }
+
+  // Room table — inventory unit under a Property. Whole-mode hosts may
+  // add ops-only rooms; per_room mode uses rooms for bookings.
+  const roomSchema = `
+CREATE TABLE IF NOT EXISTS "Room" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "propertyId" INTEGER NOT NULL,
+    "name" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Room_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "Room_propertyId_idx" ON "Room"("propertyId");
+`;
+
+  const roomStatements = roomSchema
+    .split(";")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  for (const stmt of roomStatements) {
+    try {
+      await prisma.$executeRawUnsafe(stmt);
+      console.log("OK:", stmt.substring(0, 60) + "...");
+    } catch {
+      // Table/index already exists
+    }
+  }
+
+  // Backfill rentalMode for any pre-migration properties.
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Property" SET "rentalMode" = 'whole' WHERE "rentalMode" IS NULL OR "rentalMode" = ''`,
+    );
+    console.log("OK: backfill Property.rentalMode = whole");
+  } catch (err) {
+    console.error("Backfill rentalMode failed:", err);
+  }
+
+  // Nullable propertyId on scoped tables so per_room rows can be room-only.
+  async function rebuildNullablePropertyId(
+    table: string,
+    createSql: string,
+    selectCols: string,
+  ) {
+    const tableInfo = await prisma.$queryRawUnsafe<
+      Array<{ name: string; notnull: number }>
+    >(`PRAGMA table_info("${table}")`);
+    const propertyIdCol = tableInfo.find((c) => c.name === "propertyId");
+    if (propertyIdCol?.notnull !== 1) return;
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "${table}" RENAME TO "${table}_old"`);
+    await prisma.$executeRawUnsafe(createSql);
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "${table}" SELECT ${selectCols} FROM "${table}_old"`,
+    );
+    await prisma.$executeRawUnsafe(`DROP TABLE "${table}_old"`);
+    console.log(`OK: rebuilt ${table} with nullable propertyId`);
+  }
+
+  try {
+    await rebuildNullablePropertyId(
+      "DateOverride",
+      `CREATE TABLE "DateOverride" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "propertyId" INTEGER,
+        "roomId" INTEGER,
+        "date" TEXT NOT NULL,
+        "type" TEXT NOT NULL,
+        "note" TEXT NOT NULL DEFAULT '',
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "DateOverride_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "DateOverride_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )`,
+      `"id", "propertyId", "roomId", "date", "type", "note", "createdAt"`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "DateOverride_propertyId_date_key" ON "DateOverride"("propertyId", "date")`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "DateOverride_roomId_date_key" ON "DateOverride"("roomId", "date")`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "DateOverride_roomId_date_idx" ON "DateOverride"("roomId", "date")`,
+    );
+  } catch (err) {
+    console.error("DateOverride rebuild failed:", err);
+  }
+
+  try {
+    await rebuildNullablePropertyId(
+      "MessageTemplate",
+      `CREATE TABLE "MessageTemplate" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "propertyId" INTEGER,
+        "roomId" INTEGER,
+        "name" TEXT NOT NULL,
+        "language" TEXT NOT NULL DEFAULT 'en',
+        "subject" TEXT NOT NULL DEFAULT '',
+        "body" TEXT NOT NULL,
+        "sendOffsetDays" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME,
+        CONSTRAINT "MessageTemplate_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "MessageTemplate_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )`,
+      `"id", "propertyId", "roomId", "name", "language", "subject", "body", "sendOffsetDays", "createdAt", "updatedAt"`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "MessageTemplate_propertyId_idx" ON "MessageTemplate"("propertyId")`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "MessageTemplate_roomId_idx" ON "MessageTemplate"("roomId")`,
+    );
+  } catch (err) {
+    console.error("MessageTemplate rebuild failed:", err);
+  }
+
+  try {
+    await rebuildNullablePropertyId(
+      "GuestFormTemplate",
+      `CREATE TABLE "GuestFormTemplate" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "propertyId" INTEGER,
+        "roomId" INTEGER,
+        "name" TEXT NOT NULL DEFAULT '',
+        "fields" TEXT NOT NULL DEFAULT '[]',
+        "i18n" TEXT NOT NULL DEFAULT '{}',
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME,
+        CONSTRAINT "GuestFormTemplate_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "GuestFormTemplate_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )`,
+      `"id", "propertyId", "roomId", "name", "fields", "i18n", "createdAt", "updatedAt"`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "GuestFormTemplate_propertyId_idx" ON "GuestFormTemplate"("propertyId")`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "GuestFormTemplate_roomId_idx" ON "GuestFormTemplate"("roomId")`,
+    );
+  } catch (err) {
+    console.error("GuestFormTemplate rebuild failed:", err);
   }
 
   console.log(`\nSchema pushed to ${config.label} successfully!`);

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { canManageProperty } from "@/lib/ownership";
+import {
+  assertRoomBelongsToProperty,
+  getPropertyRentalMode,
+  validateTemplateScope,
+} from "@/lib/rental-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +30,15 @@ export async function GET(request: NextRequest) {
       if (!(await canManageProperty(propertyId, session.userId, session.role))) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
+      const roomIdParam = request.nextUrl.searchParams.get("roomId");
+      const rentalMode = (await getPropertyRentalMode(propertyId)) ?? "whole";
       const templates = await prisma.messageTemplate.findMany({
-        where: { propertyId },
+        where:
+          rentalMode === "per_room"
+            ? roomIdParam
+              ? { roomId: parseInt(roomIdParam) }
+              : { room: { propertyId } }
+            : { propertyId },
         orderBy: { createdAt: "asc" },
       });
       return NextResponse.json({ templates });
@@ -60,20 +72,52 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const propertyId = Number(body.propertyId);
-    if (!propertyId || !body.name?.trim() || !body.body?.trim()) {
+    const propertyId = body.propertyId != null ? Number(body.propertyId) : null;
+    const roomId = body.roomId != null ? Number(body.roomId) : null;
+    if ((!propertyId && !roomId) || !body.name?.trim() || !body.body?.trim()) {
       return NextResponse.json(
-        { error: "propertyId, name, and body required" },
-        { status: 400 }
+        { error: "propertyId or roomId, name, and body required" },
+        { status: 400 },
       );
     }
-    if (!(await canManageProperty(propertyId, session.userId, session.role))) {
+
+    let authPropertyId = propertyId;
+    let rentalMode = "whole" as "whole" | "per_room";
+    if (propertyId) {
+      rentalMode = (await getPropertyRentalMode(propertyId)) ?? "whole";
+    } else if (roomId) {
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { propertyId: true },
+      });
+      if (!room) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      authPropertyId = room.propertyId;
+      rentalMode = (await getPropertyRentalMode(room.propertyId)) ?? "whole";
+    }
+
+    if (
+      authPropertyId == null ||
+      !(await canManageProperty(authPropertyId, session.userId, session.role))
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const scopeError = validateTemplateScope(rentalMode, { propertyId, roomId });
+    if (scopeError) {
+      return NextResponse.json({ error: scopeError.error }, { status: scopeError.status });
+    }
+
+    if (
+      roomId != null &&
+      !(await assertRoomBelongsToProperty(roomId, authPropertyId))
+    ) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const template = await prisma.messageTemplate.create({
       data: {
-        propertyId,
+        propertyId: rentalMode === "whole" ? authPropertyId : null,
+        roomId: rentalMode === "per_room" ? roomId : null,
         name: body.name.trim(),
         language: typeof body.language === "string" ? body.language : "en",
         subject: typeof body.subject === "string" ? body.subject : "",

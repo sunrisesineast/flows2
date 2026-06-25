@@ -21,11 +21,15 @@ export function generateEmptyFeed(calendarName: string = "RentTools placeholder"
 export async function generateFeed(propertyId: number, forPlatform: string): Promise<{ ical: string } | { error: string; status: number }> {
   const property = await prisma.property.findUnique({
     where: { id: propertyId },
-    select: { name: true, minNights: true, bookingWindow: true },
+    select: { name: true, minNights: true, bookingWindow: true, rentalMode: true },
   });
 
   if (!property) {
     return { error: "Property not found", status: 404 };
+  }
+
+  if (property.rentalMode === "per_room") {
+    return { error: "Not found", status: 404 };
   }
 
   const links = await prisma.calendarLink.findMany({
@@ -34,7 +38,7 @@ export async function generateFeed(propertyId: number, forPlatform: string): Pro
 
   // Date overrides
   const dateOverrides = await prisma.dateOverride.findMany({
-    where: { propertyId },
+    where: { propertyId, roomId: null },
   });
   const closedOverrides = dateOverrides.filter(o => o.type === "closed");
   // Effective open overrides exclude any date now covered by a reservation

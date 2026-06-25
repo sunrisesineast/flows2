@@ -21,6 +21,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    if (body.rentalMode !== undefined) {
+      return NextResponse.json({ error: "rentalMode cannot be changed" }, { status: 400 });
+    }
     const data: Record<string, unknown> = {};
 
     if (body.name !== undefined) data.name = body.name;

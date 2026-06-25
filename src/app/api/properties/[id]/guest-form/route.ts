@@ -4,6 +4,11 @@ import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty } from "@/lib/ownership";
 import { sanitizeI18n } from "@/lib/guest-form-i18n";
+import {
+  assertRoomBelongsToProperty,
+  getPropertyRentalMode,
+  validateTemplateScope,
+} from "@/lib/rental-mode";
 
 // Field shape stored in GuestFormTemplate.fields (JSON). Kept in sync
 // with the schema comment in prisma/schema.prisma. Validated at write
@@ -71,7 +76,7 @@ function sanitizeFields(input: unknown): FormField[] {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -86,8 +91,21 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const rentalMode = (await getPropertyRentalMode(numId)) ?? "whole";
+    const roomIdParam = request.nextUrl.searchParams.get("roomId");
+    if (rentalMode === "per_room" && !roomIdParam) {
+      return NextResponse.json({ error: "roomId is required for per-room properties" }, { status: 400 });
+    }
+    const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+    if (roomId != null && !(await assertRoomBelongsToProperty(roomId, numId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const template = await prisma.guestFormTemplate.findFirst({
-      where: { propertyId: numId },
+      where:
+        rentalMode === "per_room" && roomId != null
+          ? { roomId }
+          : { propertyId: numId },
       orderBy: { createdAt: "asc" },
     });
     if (!template) return NextResponse.json({ template: null });
@@ -103,6 +121,7 @@ export async function GET(
       template: {
         id: template.id,
         propertyId: template.propertyId,
+        roomId: template.roomId,
         name: template.name,
         fields,
         i18n,
@@ -137,8 +156,25 @@ export async function PUT(
     const i18n = sanitizeI18n(body?.i18n);
     const i18nJson = JSON.stringify(i18n);
 
+    const rentalMode = (await getPropertyRentalMode(numId)) ?? "whole";
+    const roomIdParam = request.nextUrl.searchParams.get("roomId");
+    const roomId = roomIdParam ? parseInt(roomIdParam) : null;
+    const scopeError = validateTemplateScope(rentalMode, {
+      propertyId: rentalMode === "whole" ? numId : null,
+      roomId,
+    });
+    if (scopeError) {
+      return NextResponse.json({ error: scopeError.error }, { status: scopeError.status });
+    }
+    if (roomId != null && !(await assertRoomBelongsToProperty(roomId, numId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const existing = await prisma.guestFormTemplate.findFirst({
-      where: { propertyId: numId },
+      where:
+        rentalMode === "per_room" && roomId != null
+          ? { roomId }
+          : { propertyId: numId },
       orderBy: { createdAt: "asc" },
     });
 
@@ -148,7 +184,13 @@ export async function PUT(
           data: { name, fields: fieldsJson, i18n: i18nJson, updatedAt: new Date() },
         })
       : await prisma.guestFormTemplate.create({
-          data: { propertyId: numId, name, fields: fieldsJson, i18n: i18nJson },
+          data: {
+            propertyId: rentalMode === "whole" ? numId : null,
+            roomId: rentalMode === "per_room" ? roomId : null,
+            name,
+            fields: fieldsJson,
+            i18n: i18nJson,
+          },
         });
 
     await logAudit(session.userId, existing ? "update" : "create", "guestFormTemplate", saved.id, {
@@ -160,6 +202,7 @@ export async function PUT(
       template: {
         id: saved.id,
         propertyId: saved.propertyId,
+        roomId: saved.roomId,
         name: saved.name,
         fields,
         i18n,

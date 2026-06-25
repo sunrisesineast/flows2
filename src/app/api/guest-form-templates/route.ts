@@ -24,15 +24,36 @@ export async function GET() {
 
     const templates = await prisma.guestFormTemplate.findMany({
       where: {
-        property: {
-          OR: [
-            { userId: session.userId },
-            { managers: { some: { managerId: session.userId } } },
-          ],
-        },
+        OR: [
+          {
+            property: {
+              OR: [
+                { userId: session.userId },
+                { managers: { some: { managerId: session.userId } } },
+              ],
+            },
+          },
+          {
+            room: {
+              property: {
+                OR: [
+                  { userId: session.userId },
+                  { managers: { some: { managerId: session.userId } } },
+                ],
+              },
+            },
+          },
+        ],
       },
       include: {
         property: { select: { id: true, name: true } },
+        room: {
+          select: {
+            id: true,
+            name: true,
+            property: { select: { id: true, name: true } },
+          },
+        },
         _count: { select: { submissions: true } },
       },
       orderBy: [{ propertyId: "asc" }, { createdAt: "asc" }],
@@ -46,15 +67,20 @@ export async function GET() {
       } catch {
         fieldCount = 0;
       }
+      const propertyMeta = t.property ?? t.room?.property;
       return {
         id: t.id,
-        propertyId: t.propertyId,
+        propertyId: t.propertyId ?? t.room?.property.id ?? null,
+        roomId: t.roomId,
         name: t.name,
         fieldCount,
         submissionCount: t._count.submissions,
         createdAt: t.createdAt.toISOString(),
         updatedAt: t.updatedAt ? t.updatedAt.toISOString() : null,
-        property: { id: t.property.id, name: t.property.name },
+        property: propertyMeta
+          ? { id: propertyMeta.id, name: propertyMeta.name }
+          : null,
+        room: t.room ? { id: t.room.id, name: t.room.name } : null,
       };
     });
 

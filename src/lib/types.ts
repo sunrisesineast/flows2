@@ -45,15 +45,27 @@ export interface Reservation {
    *  with no passport guests. */
   phone?: string | null;
   propertyId: number;
+  roomId?: number | null;
   createdAt: string;
   guests?: Guest[];
   _count?: { guests: number };
+}
+
+export type RentalMode = "whole" | "per_room";
+
+export interface Room {
+  id: number;
+  propertyId: number;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface Property {
   id: number;
   userId: number; // owner
   name: string;
+  rentalMode: RentalMode;
   minNights: number;
   checkInTime: string;  // "HH:MM" — guest arrival time, e.g. "14:00"
   checkOutTime: string; // "HH:MM" — guest departure time, e.g. "12:00"
@@ -90,7 +102,8 @@ export interface CalendarEvent {
 
 export interface DateOverride {
   id: number;
-  propertyId: number;
+  propertyId: number | null;
+  roomId?: number | null;
   date: string;
   type: "open" | "closed";
   note: string;

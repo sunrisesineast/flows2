@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty } from "@/lib/ownership";
 import { normalizePhone } from "@/lib/sanitize";
+import { getPropertyRentalMode, reservationOverlapWhere } from "@/lib/rental-mode";
 
 async function loadManageableReservation(
   reservationId: number,
@@ -15,6 +16,7 @@ async function loadManageableReservation(
     select: {
       id: true,
       propertyId: true,
+      roomId: true,
       linkedEventUid: true,
       checkIn: true,
       checkOut: true,
@@ -41,6 +43,9 @@ export async function PATCH(
     if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const body = await request.json();
+    if (body.roomId !== undefined) {
+      return NextResponse.json({ error: "roomId cannot be changed" }, { status: 400 });
+    }
     const data: Record<string, unknown> = {};
 
     if (body.name !== undefined) data.name = body.name;
@@ -109,21 +114,23 @@ export async function PATCH(
     if (data.checkIn !== undefined || data.checkOut !== undefined) {
       const current = await prisma.reservation.findUnique({
         where: { id: numId },
-        select: { checkIn: true, checkOut: true, propertyId: true },
+        select: { checkIn: true, checkOut: true, propertyId: true, roomId: true },
       });
       if (current) {
+        const rentalMode = (await getPropertyRentalMode(current.propertyId)) ?? "whole";
         const newCheckIn = (data.checkIn as Date | undefined) ?? current.checkIn;
         const newCheckOut = (data.checkOut as Date | undefined) ?? current.checkOut;
         if (newCheckOut <= newCheckIn) {
           return NextResponse.json({ error: "checkOut must be after checkIn" }, { status: 400 });
         }
         const overlap = await prisma.reservation.findFirst({
-          where: {
-            propertyId: current.propertyId,
-            id: { not: numId },
-            checkIn: { lt: newCheckOut },
-            checkOut: { gt: newCheckIn },
-          },
+          where: reservationOverlapWhere(
+            rentalMode,
+            current.propertyId,
+            current.roomId,
+            { checkIn: newCheckIn, checkOut: newCheckOut },
+            numId,
+          ),
           select: { name: true, checkIn: true, checkOut: true },
         });
         if (overlap) {
@@ -146,27 +153,29 @@ export async function PATCH(
         // another platform.
         const newStartStr = newCheckIn.toISOString().substring(0, 10);
         const newEndStr = newCheckOut.toISOString().substring(0, 10);
-        const syncedOverlap = await prisma.calendarEvent.findFirst({
-          where: {
-            propertyId: current.propertyId,
-            startDate: { lt: newEndStr },
-            endDate: { gt: newStartStr },
-          },
-          select: { summary: true, platform: true, startDate: true, endDate: true },
-        });
-        if (syncedOverlap) {
-          return NextResponse.json(
-            {
-              error: "Overlapping booking from another platform",
-              existing: {
-                name: syncedOverlap.summary || syncedOverlap.platform,
-                checkIn: syncedOverlap.startDate,
-                checkOut: syncedOverlap.endDate,
-                platform: syncedOverlap.platform,
-              },
+        if (rentalMode === "whole") {
+          const syncedOverlap = await prisma.calendarEvent.findFirst({
+            where: {
+              propertyId: current.propertyId,
+              startDate: { lt: newEndStr },
+              endDate: { gt: newStartStr },
             },
-            { status: 409 },
-          );
+            select: { summary: true, platform: true, startDate: true, endDate: true },
+          });
+          if (syncedOverlap) {
+            return NextResponse.json(
+              {
+                error: "Overlapping booking from another platform",
+                existing: {
+                  name: syncedOverlap.summary || syncedOverlap.platform,
+                  checkIn: syncedOverlap.startDate,
+                  checkOut: syncedOverlap.endDate,
+                  platform: syncedOverlap.platform,
+                },
+              },
+              { status: 409 },
+            );
+          }
         }
       }
     }
@@ -192,9 +201,13 @@ export async function PATCH(
         d.setDate(d.getDate() + 1);
       }
       if (datesToClear.length > 0) {
+        const rentalMode =
+          (await getPropertyRentalMode(reservation.propertyId)) ?? "whole";
         await prisma.dateOverride.deleteMany({
           where: {
-            propertyId: reservation.propertyId,
+            ...(rentalMode === "per_room" && reservation.roomId
+              ? { roomId: reservation.roomId }
+              : { propertyId: reservation.propertyId }),
             date: { in: datesToClear },
             type: { in: ["open", "closed"] },
           },

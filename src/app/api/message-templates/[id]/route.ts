@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 async function loadManageableTemplate(id: number, userId: number, role: string) {
   const t = await prisma.messageTemplate.findUnique({
     where: { id },
-    select: { id: true, propertyId: true },
+    select: { id: true, propertyId: true, roomId: true, room: { select: { propertyId: true } } },
   });
   if (!t) return null;
-  if (!(await canManageProperty(t.propertyId, userId, role))) return null;
+  const authPropertyId = t.propertyId ?? t.room?.propertyId;
+  if (authPropertyId == null) return null;
+  if (!(await canManageProperty(authPropertyId, userId, role))) return null;
   return t;
 }
 

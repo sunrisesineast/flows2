@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { canManageProperty } from "@/lib/ownership";
 import { randomBytes } from "node:crypto";
+import { getPropertyRentalMode, wholePropertySyncBlocked } from "@/lib/rental-mode";
 
 // GET /api/properties/[id]/rotate-feed-token — return current token (or null)
 export async function GET(
@@ -20,6 +21,12 @@ export async function GET(
 
     if (!(await canManageProperty(numId, session.userId, session.role))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const rentalMode = (await getPropertyRentalMode(numId)) ?? "whole";
+    const syncBlocked = wholePropertySyncBlocked(rentalMode);
+    if (syncBlocked) {
+      return NextResponse.json({ error: syncBlocked.error }, { status: syncBlocked.status });
     }
 
     const property = await prisma.property.findUnique({
@@ -52,6 +59,12 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const rentalMode = (await getPropertyRentalMode(numId)) ?? "whole";
+    const syncBlocked = wholePropertySyncBlocked(rentalMode);
+    if (syncBlocked) {
+      return NextResponse.json({ error: syncBlocked.error }, { status: syncBlocked.status });
+    }
+
     const feedToken = randomBytes(24).toString("base64url");
     const property = await prisma.property.update({
       where: { id: numId },
@@ -82,6 +95,12 @@ export async function DELETE(
 
     if (!(await canManageProperty(numId, session.userId, session.role))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const rentalMode = (await getPropertyRentalMode(numId)) ?? "whole";
+    const syncBlocked = wholePropertySyncBlocked(rentalMode);
+    if (syncBlocked) {
+      return NextResponse.json({ error: syncBlocked.error }, { status: syncBlocked.status });
     }
 
     await prisma.property.update({

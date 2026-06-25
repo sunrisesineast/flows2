@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { canManageProperty } from "@/lib/ownership";
+import { getPropertyRentalMode } from "@/lib/rental-mode";
 
 // RT-25.2 — find-or-create a GuestFormSubmission for this reservation
 // against the property's first GuestFormTemplate. Returns the share
@@ -41,7 +42,7 @@ export async function GET(
 
     const reservation = await prisma.reservation.findUnique({
       where: { id: numId },
-      select: { id: true, propertyId: true },
+      select: { id: true, propertyId: true, roomId: true },
     });
     if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!(await canManageProperty(reservation.propertyId, session.userId, session.role))) {
@@ -91,15 +92,19 @@ export async function POST(
 
     const reservation = await prisma.reservation.findUnique({
       where: { id: numId },
-      select: { id: true, propertyId: true },
+      select: { id: true, propertyId: true, roomId: true },
     });
     if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!(await canManageProperty(reservation.propertyId, session.userId, session.role))) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const rentalMode = (await getPropertyRentalMode(reservation.propertyId)) ?? "whole";
     const template = await prisma.guestFormTemplate.findFirst({
-      where: { propertyId: reservation.propertyId },
+      where:
+        rentalMode === "per_room" && reservation.roomId != null
+          ? { roomId: reservation.roomId }
+          : { propertyId: reservation.propertyId },
       orderBy: { createdAt: "asc" },
     });
     if (!template) {

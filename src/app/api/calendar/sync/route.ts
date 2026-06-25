@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { syncAllCalendars } from "@/lib/calendar-sync";
 import { getSession } from "@/lib/auth";
 import { canReadProperty, listAccessiblePropertyIds } from "@/lib/ownership";
+import { getPropertyRentalMode, wholePropertySyncBlocked } from "@/lib/rental-mode";
 
 // POST /api/calendar/sync — trigger a manual sync.
 //
@@ -29,6 +30,11 @@ export async function POST(request: NextRequest) {
     if (propertyId != null && !Number.isNaN(propertyId)) {
       if (!(await canReadProperty(propertyId, session.userId, session.role))) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      const rentalMode = (await getPropertyRentalMode(propertyId)) ?? "whole";
+      const syncBlocked = wholePropertySyncBlocked(rentalMode);
+      if (syncBlocked) {
+        return NextResponse.json({ error: syncBlocked.error }, { status: syncBlocked.status });
       }
       propertyIds = [propertyId];
     } else {
