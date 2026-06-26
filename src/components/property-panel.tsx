@@ -16,7 +16,7 @@ import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
 import { platformColor, platformDisplayName } from "@/lib/reservation-display";
 import type { Property, RentalMode, Reservation } from "@/lib/types";
-import { cn, GLASS_SURFACE } from "@/lib/utils";
+import { cn, GLASS_FLOATING, GLASS_SURFACE } from "@/lib/utils";
 
 interface CopyShape {
   title: string;
@@ -250,7 +250,10 @@ function PropertyDetail({
         <Button
           variant="outline"
           size="default"
-          className="h-9 gap-2 border-[var(--line)] bg-[var(--bg)]/80 px-3.5 font-medium text-[var(--ink)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] backdrop-blur-sm hover:bg-[var(--bg-2)]/90 hover:ring-1 hover:ring-[var(--line-2)]"
+          className={cn(
+            GLASS_FLOATING,
+            "h-9 gap-2 border-[var(--line)] px-3.5 font-medium text-[var(--ink)] hover:bg-[var(--bg-2)]/90 hover:ring-1 hover:ring-[var(--line-2)]"
+          )}
           render={<Link href="/dashboard?view=sync" />}
         >
           <ChevronLeft className="size-4" />
