@@ -77,7 +77,7 @@ export async function GET(
         select: { id: true, claimedByUserId: true },
       });
       if (draft && !draft.claimedByUserId) {
-        const ical = generateEmptyFeed("RentTools onboarding");
+        const ical = generateEmptyFeed("InnkeeperOS onboarding");
         return icalResponse(ical, forPlatform);
       }
     }

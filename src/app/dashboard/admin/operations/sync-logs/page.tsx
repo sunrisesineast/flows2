@@ -237,7 +237,7 @@ export default function AdminSyncLogsPage() {
                   </span>
                   {log.propertyId !== null ? (
                     <Link
-                      href={`/dashboard?property=${log.propertyId}&view=sync`}
+                      href={`/dashboard?property=${log.propertyId}&view=property-settings`}
                       className="shrink-0 text-xs text-[var(--ink-3)] hover:text-[var(--ink)] hover:underline"
                     >
                       {propName ?? `#${log.propertyId}`}

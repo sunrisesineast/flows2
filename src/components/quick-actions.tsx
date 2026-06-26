@@ -24,7 +24,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 export type QuickAction = {
   id: string;
@@ -122,7 +122,7 @@ export function QuickActions({
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-0 overflow-hidden py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "gap-0 overflow-hidden py-0", className)}>
       <CardHeader className="border-b px-3 py-3">
         <CardTitle className="text-base font-semibold leading-none text-violet-950 dark:text-violet-100">
           Quick Actions

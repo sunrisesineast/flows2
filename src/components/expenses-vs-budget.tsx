@@ -25,7 +25,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 export type ExpenseCategory = {
   id: string;
@@ -135,7 +135,7 @@ export function ExpensesVsBudget({
   );
 
   return (
-    <Card className={cn("gap-0 overflow-hidden py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "gap-0 overflow-hidden py-0", className)}>
       <CardHeader className="grid-rows-1 items-center border-b px-3 py-3">
         <CardTitle className="text-base font-semibold leading-none">
           Expenses vs Budget (This Month)

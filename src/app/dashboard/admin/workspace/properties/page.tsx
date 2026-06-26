@@ -268,7 +268,7 @@ export default function AdminPropertiesPage() {
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <Link
-                          href={`/dashboard?property=${p.id}&view=sync`}
+                          href={`/dashboard?property=${p.id}&view=property-settings`}
                           className="text-xs text-[var(--ink-3)] hover:text-[var(--ink)] hover:underline"
                         >
                           →

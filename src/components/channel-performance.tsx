@@ -19,7 +19,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Progress, ProgressValue } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 export type ChannelPerformanceItem = {
   id: string;
@@ -145,7 +145,7 @@ export function ChannelPerformance({
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-0 overflow-hidden py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "gap-0 overflow-hidden py-0", className)}>
       <CardHeader className="grid-rows-1 items-center border-b px-3 py-3">
         <CardTitle className="text-base font-semibold leading-none">
           Channel Performance (This Month)

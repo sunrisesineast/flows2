@@ -29,31 +29,31 @@ import type { Locale } from "@/lib/i18n/translations";
 const HOME_META: Record<Locale, { title: string; description: string }> = {
   en: {
     title:
-      "RentTools — open-source property manager for short-term rentals",
+      "InnkeeperOS — open-source property manager for short-term rentals",
     description:
       "Free open-source property manager for short-term rental hosts. Sync Airbnb + Booking.com calendars, automate cleaning, extract guest passports.",
   },
   ru: {
     title:
-      "RentTools — открытый менеджер краткосрочной аренды",
+      "InnkeeperOS — открытый менеджер краткосрочной аренды",
     description:
       "Бесплатный менеджер для хостов краткосрочной аренды с открытым кодом. Синхронизация календарей Airbnb и Booking.com, автоматизация уборок, распознавание паспортов гостей.",
   },
   de: {
     title:
-      "RentTools — Open-Source-Verwaltung für Kurzzeitvermietung",
+      "InnkeeperOS — Open-Source-Verwaltung für Kurzzeitvermietung",
     description:
       "Kostenlose Open-Source-Verwaltung für Kurzzeitvermieter. Airbnb- und Booking.com-Kalender synchronisieren, Reinigung automatisieren, Gast-Pässe auslesen.",
   },
   fr: {
     title:
-      "RentTools — gestionnaire open source pour la location courte durée",
+      "InnkeeperOS — gestionnaire open source pour la location courte durée",
     description:
       "Gestionnaire open source gratuit pour les hôtes de location courte durée. Synchronisez les calendriers Airbnb et Booking.com, automatisez le ménage, extrayez les passeports voyageurs.",
   },
   es: {
     title:
-      "RentTools — gestor de alquiler vacacional de código abierto",
+      "InnkeeperOS — gestor de alquiler vacacional de código abierto",
     description:
       "Gestor de código abierto y gratuito para anfitriones de alquiler vacacional. Sincroniza los calendarios de Airbnb y Booking.com, automatiza la limpieza y extrae datos de pasaportes de huéspedes.",
   },
@@ -82,7 +82,7 @@ export async function generateMetadata(): Promise<Metadata> {
         title: meta.title,
         description: meta.description,
         url: alts.canonical,
-        siteName: "RentTools",
+        siteName: "InnkeeperOS",
         locale: ogLocale,
         alternateLocale,
       },
@@ -231,7 +231,7 @@ const COPY: Record<Locale, CopyBlock> = {
       secondary: "Read the source",
     },
     footer: {
-      copyright: "© 2026 RentTools · MIT License",
+      copyright: "© 2026 InnkeeperOS · MIT License",
       github: "GitHub",
       blog: "Blog",
       changelog: "Changelog",
@@ -360,7 +360,7 @@ const COPY: Record<Locale, CopyBlock> = {
       secondary: "Посмотреть исходники",
     },
     footer: {
-      copyright: "© 2026 RentTools · MIT License",
+      copyright: "© 2026 InnkeeperOS · MIT License",
       github: "GitHub",
       blog: "Блог",
       changelog: "История изменений",
@@ -489,7 +489,7 @@ const COPY: Record<Locale, CopyBlock> = {
       secondary: "Quellcode lesen",
     },
     footer: {
-      copyright: "© 2026 RentTools · MIT-Lizenz",
+      copyright: "© 2026 InnkeeperOS · MIT-Lizenz",
       github: "GitHub",
       blog: "Blog",
       changelog: "Änderungsverlauf",
@@ -618,7 +618,7 @@ const COPY: Record<Locale, CopyBlock> = {
       secondary: "Lire le code source",
     },
     footer: {
-      copyright: "© 2026 RentTools · Licence MIT",
+      copyright: "© 2026 InnkeeperOS · Licence MIT",
       github: "GitHub",
       blog: "Blog",
       changelog: "Journal des modifications",
@@ -747,7 +747,7 @@ const COPY: Record<Locale, CopyBlock> = {
       secondary: "Leer el código fuente",
     },
     footer: {
-      copyright: "© 2026 RentTools · Licencia MIT",
+      copyright: "© 2026 InnkeeperOS · Licencia MIT",
       github: "GitHub",
       blog: "Blog",
       changelog: "Registro de cambios",
@@ -774,7 +774,7 @@ const FAQ_LD = {
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://renttools.io";
 
-// SoftwareApplication schema — describes the *product* RentTools is.
+// SoftwareApplication schema — describes the *product* InnkeeperOS is.
 // Distinct from the Organization block in the root layout (which
 // describes the *publisher*). Required-by-Google fields: name, applicationCategory,
 // operatingSystem, offers. The price=0 + priceCurrency=USD pair is what makes
@@ -783,7 +783,7 @@ const SOFTWARE_LD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "@id": `${SITE_URL}/#software`,
-  name: "RentTools",
+  name: "InnkeeperOS",
   description:
     "Free open-source property management software for short-term rental hosts. Cross-syncs Airbnb, Booking.com, and Vrbo iCal calendars; automates cleaning schedules; manages multi-property guest data.",
   applicationCategory: "BusinessApplication",

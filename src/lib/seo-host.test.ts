@@ -32,7 +32,7 @@ describe("isStagingHost", () => {
 
   it("normalizes case", () => {
     expect(isStagingHost("STAGING.RENTTOOLS.IO")).toBe(true);
-    expect(isStagingHost("RentTools.io")).toBe(false);
+    expect(isStagingHost("renttools.io")).toBe(false);
   });
 
   it("returns false for missing host (fail-safe — assume production)", () => {

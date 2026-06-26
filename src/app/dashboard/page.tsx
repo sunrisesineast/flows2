@@ -13,10 +13,12 @@ import { PropertyCalendar } from "@/components/property-calendar";
 import { PropertyCleaningView } from "@/components/property-cleaning-view";
 import { GlobalCleaningView } from "@/components/global-cleaning-view";
 import { SyncSettings } from "@/components/sync-settings";
+import { PropertyPanel } from "@/components/property-panel";
 import { GuestFormPage } from "@/components/guest-form-page";
 import { TasksPanel } from "@/components/tasks-panel";
 import { ReportsPanel } from "@/components/reports-panel";
 import { FinancePanel } from "@/components/finance-panel";
+import { ReservationsPanel } from "@/components/reservations-panel";
 import { SyncAlertsBanner } from "@/components/sync-alerts-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { SupportFooter } from "@/components/support-footer";
@@ -310,6 +312,17 @@ function AppContent({
       return <ReportsPanel property={selectedProperty ?? null} properties={properties} />;
     }
 
+    if (activeView === "reservations") {
+      return (
+        <ReservationsPanel
+          properties={properties}
+          onSelectProperty={handleSelectProperty}
+          onSelectReservation={handleSelectReservation}
+          onUpdateProperty={handleUpdateProperty}
+        />
+      );
+    }
+
     if (activeView === "finance") {
       return <FinancePanel property={selectedProperty ?? null} properties={properties} />;
     }
@@ -321,6 +334,15 @@ function AppContent({
     // bounces the user into a forced-property selection.
     if (activeView === "cleaning" && !selectedProperty) {
       return <GlobalCleaningView properties={properties} />;
+    }
+
+    if (activeView === "sync") {
+      return (
+        <PropertyPanel
+          properties={properties}
+          selectedPropertyId={selectedPropertyId}
+        />
+      );
     }
 
     // Property views
@@ -345,7 +367,7 @@ function AppContent({
               onCleaningEnabledChanged={fetchProperties}
             />
           );
-        case "sync":
+        case "property-settings":
           return (
             <SyncSettings
               key={`sync-${selectedProperty.id}`}

@@ -189,7 +189,7 @@ export default function AdminFeedTokensPage() {
                       {gated ? c.gatedBadge : c.publicBadge}
                     </span>
                     <Link
-                      href={`/dashboard?property=${p.id}&view=sync`}
+                      href={`/dashboard?property=${p.id}&view=property-settings`}
                       className="shrink-0 text-xs text-[var(--ink-3)] hover:text-[var(--ink)] hover:underline"
                     >
                       {c.openSync}

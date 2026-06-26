@@ -6,7 +6,7 @@ import type { Locale } from "@/lib/i18n/translations";
  * PWA manifest. Per-locale because the `name` / `short_name` /
  * `description` / `lang` fields surface in the OS install dialog and
  * the eventual home-screen label. A Russian visitor installing the
- * app from /ru/ should see "RentTools" with a Russian description,
+ * app from /ru/ should see "InnkeeperOS" with a Russian description,
  * and the OS tags the installed app `lang="ru"` (which influences
  * IME selection + screen-reader voice on some platforms).
  *
@@ -18,31 +18,31 @@ import type { Locale } from "@/lib/i18n/translations";
 
 const LOCALIZED: Record<Locale, { name: string; description: string; lang: string }> = {
   en: {
-    name: "RentTools",
+    name: "InnkeeperOS",
     description:
       "Free, open-source property manager for short-term rental hosts. Sync Airbnb + Booking.com, automate cleaning.",
     lang: "en",
   },
   ru: {
-    name: "RentTools",
+    name: "InnkeeperOS",
     description:
       "Бесплатный менеджер для хостов краткосрочной аренды с открытым кодом. Синхронизация Airbnb и Booking.com, автоматизация уборок.",
     lang: "ru",
   },
   de: {
-    name: "RentTools",
+    name: "InnkeeperOS",
     description:
       "Kostenlose Open-Source-Verwaltung für Kurzzeitvermieter. Airbnb und Booking.com synchronisieren, Reinigung automatisieren.",
     lang: "de",
   },
   fr: {
-    name: "RentTools",
+    name: "InnkeeperOS",
     description:
       "Gestionnaire open source gratuit pour les hôtes de location courte durée. Synchronisez Airbnb et Booking.com, automatisez le ménage.",
     lang: "fr",
   },
   es: {
-    name: "RentTools",
+    name: "InnkeeperOS",
     description:
       "Gestor de código abierto y gratuito para anfitriones de alquiler vacacional. Sincronice Airbnb y Booking.com y automatice las limpiezas.",
     lang: "es",

@@ -5,27 +5,27 @@ import { localizedAlternates } from "@/lib/i18n/alternates";
 import { toOgLocale } from "@/lib/i18n/locale-tags";
 import type { Locale } from "@/lib/i18n/translations";
 
-// See login/layout.tsx — title template appends "· RentTools" automatically.
+// See login/layout.tsx — title template appends "· InnkeeperOS" automatically.
 const RESET_COPY: Record<Locale, { title: string; description: string }> = {
   en: {
     title: "Reset password",
-    description: "Reset your RentTools account password with a code sent to your email.",
+    description: "Reset your InnkeeperOS account password with a code sent to your email.",
   },
   ru: {
     title: "Сброс пароля",
-    description: "Сбросьте пароль аккаунта RentTools с помощью кода, отправленного на вашу почту.",
+    description: "Сбросьте пароль аккаунта InnkeeperOS с помощью кода, отправленного на вашу почту.",
   },
   de: {
     title: "Passwort zurücksetzen",
-    description: "Setzen Sie Ihr RentTools-Kontopasswort mit einem an Ihre E-Mail gesendeten Code zurück.",
+    description: "Setzen Sie Ihr InnkeeperOS-Kontopasswort mit einem an Ihre E-Mail gesendeten Code zurück.",
   },
   fr: {
     title: "Réinitialiser le mot de passe",
-    description: "Réinitialisez le mot de passe de votre compte RentTools avec un code envoyé par e-mail.",
+    description: "Réinitialisez le mot de passe de votre compte InnkeeperOS avec un code envoyé par e-mail.",
   },
   es: {
     title: "Restablecer contraseña",
-    description: "Restablezca la contraseña de su cuenta RentTools con un código enviado a su correo.",
+    description: "Restablezca la contraseña de su cuenta InnkeeperOS con un código enviado a su correo.",
   },
 };
 
@@ -42,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: copy.title,
       description: copy.description,
       url: alts.canonical,
-      siteName: "RentTools",
+      siteName: "InnkeeperOS",
       locale: toOgLocale(locale),
     },
     twitter: { card: "summary_large_image", title: copy.title, description: copy.description },

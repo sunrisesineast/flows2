@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "checkOut must be after checkIn" }, { status: 400 });
     }
 
-    // Check overlap with existing RentTools reservations on the same
+    // Check overlap with existing InnkeeperOS reservations on the same
     // property. The host can't have two reservations covering the same
     // night.
     const overlap = await prisma.reservation.findFirst({

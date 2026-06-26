@@ -19,7 +19,7 @@ import {
   TableCell,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 export type BookingRequestStatus = "new" | "confirmed" | "pending";
 
@@ -151,7 +151,7 @@ export function BookingRequests({
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-0 overflow-hidden py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "gap-0 overflow-hidden py-0", className)}>
       <CardHeader className="grid-rows-1 items-center border-b px-3 py-3">
         <CardTitle className="text-base font-semibold leading-none">Booking Requests</CardTitle>
         <CardAction>

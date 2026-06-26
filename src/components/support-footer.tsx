@@ -32,7 +32,7 @@ export function SupportFooter() {
         <Link href="/privacy" className="underline hover:text-[var(--ink-2)]">Privacy</Link>.
       </p>
       <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
-        <span>© 2026 RentTools</span>
+        <span>© 2026 InnkeeperOS</span>
         <Link href="/blog" className="hover:text-[var(--ink-2)]">Blog</Link>
         <Link href="/changelog" className="hover:text-[var(--ink-2)]">Changelog</Link>
         <Link href="/privacy" className="hover:text-[var(--ink-2)]">Privacy</Link>

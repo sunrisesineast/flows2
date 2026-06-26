@@ -10,7 +10,7 @@ export { parseFeedFilename } from "@/lib/feed-utils";
  * a single past-dated placeholder VEVENT when given an empty events array
  * (some platforms reject 0-event feeds), so this is just a wrapper.
  */
-export function generateEmptyFeed(calendarName: string = "RentTools placeholder"): string {
+export function generateEmptyFeed(calendarName: string = "InnkeeperOS placeholder"): string {
   return generateICal([], calendarName);
 }
 

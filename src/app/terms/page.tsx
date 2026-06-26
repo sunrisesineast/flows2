@@ -4,7 +4,7 @@ import { MarketingHeader } from "@/components/marketing-header";
 import { applySeoOverrides } from "@/lib/seo";
 
 const TERMS_TITLE = "Terms of Service";
-const TERMS_DESCRIPTION = "Terms of service for the free hosted instance of RentTools at renttools.io.";
+const TERMS_DESCRIPTION = "Terms of service for the free hosted instance of InnkeeperOS at renttools.io.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const base: Metadata = {
@@ -13,14 +13,14 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: "/terms" },
     openGraph: {
       type: "article",
-      title: `${TERMS_TITLE} · RentTools`,
+      title: `${TERMS_TITLE} · InnkeeperOS`,
       description: TERMS_DESCRIPTION,
       url: "/terms",
-      siteName: "RentTools",
+      siteName: "InnkeeperOS",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${TERMS_TITLE} · RentTools`,
+      title: `${TERMS_TITLE} · InnkeeperOS`,
       description: TERMS_DESCRIPTION,
     },
   };
@@ -46,7 +46,7 @@ export default function TermsPage() {
               These Terms of Service (&quot;Terms&quot;) form a binding agreement between
               you (&quot;you&quot;, &quot;your&quot;) and {OPERATOR_NAME}
               (&quot;we&quot;, &quot;us&quot;, &quot;the Operator&quot;), the
-              independent maintainer of the RentTools service hosted at{" "}
+              independent maintainer of the InnkeeperOS service hosted at{" "}
               <span className="font-mono text-[var(--ink)]">https://renttools.io</span>{" "}
               (&quot;the Service&quot;). By creating an account or using the Service you
               agree to these Terms. If you do not agree, do not use the Service.
@@ -56,7 +56,7 @@ export default function TermsPage() {
           <section>
             <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">1. About the Service</h2>
             <p>
-              RentTools is an open-source property and reservation manager designed for
+              InnkeeperOS is an open-source property and reservation manager designed for
               owners and managers of short-term rentals. The source code is published
               under the MIT License at{" "}
               <a
@@ -171,8 +171,8 @@ export default function TermsPage() {
           <section>
             <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">7. Intellectual property</h2>
             <p>
-              The RentTools source code is licensed under the MIT License — copy a copy
-              with the source. The &quot;RentTools&quot; name and any logos used on
+              The InnkeeperOS source code is licensed under the MIT License — copy a copy
+              with the source. The &quot;InnkeeperOS&quot; name and any logos used on
               renttools.io remain the property of the Operator and are not licensed for
               use to imply endorsement of forks or other instances. The third-party
               names mentioned in the application (Airbnb, Booking.com, Google, etc.)
@@ -312,7 +312,7 @@ export default function TermsPage() {
 
       <footer className="border-t border-[var(--line)]">
         <div className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-[var(--ink-4)] sm:flex-row sm:px-6">
-          <p>© 2026 RentTools · MIT License</p>
+          <p>© 2026 InnkeeperOS · MIT License</p>
           <nav className="flex gap-4">
             <Link href="/" className="hover:text-[var(--ink)]">Home</Link>
             <Link href="/privacy" className="hover:text-[var(--ink)]">Privacy</Link>

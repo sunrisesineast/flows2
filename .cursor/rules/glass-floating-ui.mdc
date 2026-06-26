@@ -1,0 +1,47 @@
+---
+description: Glass surfaces, floating sticky controls, and lean segmented UI patterns
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# Glass & Floating UI
+
+Follow the floating back button in `property-panel.tsx` and tokens in `@/lib/utils`.
+
+## Glass surfaces
+
+Reuse shared constants — never hand-roll glass classes:
+
+```tsx
+import { cn, GLASS_SURFACE, GLASS_PANEL } from "@/lib/utils"
+
+// ✅ Card sections
+<Card className={cn(GLASS_SURFACE, "gap-0 overflow-hidden py-0")} />
+// ✅ Plain bordered panels
+<div className={cn("rounded-lg p-4", GLASS_PANEL)} />
+// ❌ One-off glass strings
+<div className="bg-[var(--bg-2)]/80 backdrop-blur-sm shadow-..." />
+```
+
+Use tokens: `var(--ink)`, `var(--bg)`, `var(--bg-2)`, `var(--line)`, `var(--line-2)`.
+
+## Floating sticky controls
+
+Float the control, not a full-width bar:
+
+```tsx
+// ✅ w-fit wrapper; glass on the button only
+<div className="sticky top-0 z-10 w-fit">
+  <Button variant="outline" className="border-[var(--line)] bg-[var(--bg)]/80 backdrop-blur-sm shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] ..." />
+</div>
+// ❌ Full-width opaque strip
+<div className="sticky top-0 border-b bg-background shadow-md"><Button /></div>
+```
+
+## Layout & UX
+
+- **Segmented views**: Cards/sections (header, at-a-glance, upcoming, quick links) — not one bloated scroll.
+- **Lean detail views**: no admin/settings duplication on user-facing panels.
+- **shadcn first**: compose `@/components/ui/*`; install via CLI when missing.
+- **i18n**: `COPY: Record<Locale, CopyShape>` for user-facing strings.
+- **lazy-shadcn**: minimum code; match existing pixels.

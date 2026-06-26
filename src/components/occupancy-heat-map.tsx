@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 export type OccupancyLevel = "available" | "low" | "medium" | "high" | "full";
 
@@ -118,7 +118,7 @@ export function OccupancyHeatMap({
   const goNextWeek = () => setWeekOffset((w) => w + 1);
 
   return (
-    <Card className={cn("h-fit gap-0 overflow-hidden py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "h-fit gap-0 overflow-hidden py-0", className)}>
       <CardHeader className="grid-rows-1 items-center border-b px-3 py-3">
         <CardTitle className="truncate text-sm font-semibold leading-none">
           Occupancy Calendar (Heat Map)

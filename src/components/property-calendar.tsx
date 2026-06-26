@@ -524,7 +524,7 @@ export function PropertyCalendar({
                 description={t("empty.calendar.desc")}
                 link={{
                   label: c.connectCalendar,
-                  href: `/dashboard?property=${property.id}&view=sync`,
+                  href: `/dashboard?property=${property.id}&view=property-settings`,
                 }}
               />
             </div>

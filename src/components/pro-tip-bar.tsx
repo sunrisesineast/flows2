@@ -26,7 +26,7 @@ export function ProTipBar({
   return (
     <Alert
       className={cn(
-        "flex flex-col gap-3 rounded-xl border-violet-200/80 bg-violet-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-violet-500/20 dark:bg-violet-500/10",
+        "flex flex-col gap-3 rounded-xl border-violet-200/80 bg-violet-50/80 px-4 py-3 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 dark:border-violet-500/20 dark:bg-violet-500/10",
         className
       )}
     >

@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "RentTools — open-source property manager for short-term rentals";
+export const alt = "InnkeeperOS — open-source property manager for short-term rentals";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -37,10 +37,10 @@ export default async function Image() {
               color: "#ff385c",
             }}
           >
-            RT
+            IK
           </div>
           <div style={{ fontSize: "32px", fontWeight: 600, letterSpacing: "-0.02em" }}>
-            RentTools
+            InnkeeperOS
           </div>
         </div>
 

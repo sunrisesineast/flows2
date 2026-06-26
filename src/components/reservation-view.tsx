@@ -241,7 +241,7 @@ export function ReservationView({
   // RT-25.2 — pre-arrival guest form share link. hasGuestForm gates
   // the "Copy form link" button so it only shows when the property
   // actually has a template configured. The action is link-generation
-  // + clipboard copy — RentTools doesn't send anything to the guest;
+  // + clipboard copy — InnkeeperOS doesn't send anything to the guest;
   // the host pastes the URL into WhatsApp / SMS / email themselves.
   const [hasGuestForm, setHasGuestForm] = useState(false);
   // True once the guest-form fetch has resolved — gates the
@@ -314,7 +314,7 @@ export function ReservationView({
   }, [refreshGuestFormSubmission]);
 
   // Generate (or reuse) the guest's pre-arrival form share URL and
-  // place it on the clipboard. RentTools does NOT send anything to the
+  // place it on the clipboard. InnkeeperOS does NOT send anything to the
   // guest — the host pastes the URL into WhatsApp / SMS / email
   // themselves. The endpoint is idempotent on second call: returns the
   // same shareUrl that was minted the first time.
@@ -390,7 +390,7 @@ export function ReservationView({
         ? "Submitted today"
         : `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
     }
-    // Avoid the word "Sent" — RentTools doesn't send the link, the host
+    // Avoid the word "Sent" — InnkeeperOS doesn't send the link, the host
     // does. We only know when the share token was minted (i.e. when the
     // link was first copied to the clipboard).
     const days = Math.max(
@@ -812,7 +812,7 @@ export function ReservationView({
 
       {/* RT-25.2 — Pre-arrival form share link. Hidden when the property
           has no GuestFormTemplate configured (set up under Sync Settings).
-          Action is generate + copy: RentTools doesn't send anything to
+          Action is generate + copy: InnkeeperOS doesn't send anything to
           the guest. The host pastes the link into WhatsApp / SMS / email
           themselves. */}
       {hasGuestForm && (
@@ -1143,7 +1143,7 @@ export function ReservationView({
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
         </svg>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Passport documents are private to your account. RentTools support and
+          Passport documents are private to your account. InnkeeperOS support and
           administrators cannot view the passport details you upload here.
         </p>
       </div>

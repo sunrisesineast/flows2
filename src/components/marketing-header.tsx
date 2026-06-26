@@ -71,7 +71,7 @@ export function MarketingHeader({ sticky = false, softLocaleSwitch = false }: Ma
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-4">
         <Link
           href={localized("/")}
-          aria-label="RentTools home"
+          aria-label="InnkeeperOS home"
           className="group flex shrink-0 items-center gap-2 min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--m-accent)]/50"
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--m-accent)] shadow-sm shadow-[var(--m-accent)]/30 transition-all duration-200 ease-out group-hover:scale-110 group-hover:shadow-md group-hover:shadow-[var(--m-accent)]/50 group-active:scale-90 group-active:duration-75">
@@ -108,7 +108,7 @@ export function MarketingHeader({ sticky = false, softLocaleSwitch = false }: Ma
             </svg>
           </div>
           <span className="display text-[17px] font-semibold tracking-tight text-[var(--ink)]">
-            RentTools
+            InnkeeperOS
           </span>
         </Link>
 

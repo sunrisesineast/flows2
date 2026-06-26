@@ -17,6 +17,17 @@ import { MetricCard } from "@/components/metric-card";
 import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
 import type { Property, CalendarLink, DateOverride } from "@/lib/types";
+import {
+  PLATFORM_PRESETS,
+  buildUnifiedStays,
+  detectDoubleBookings,
+  friendlyIcalName,
+  platformColor,
+  platformDisplayName,
+  toLocalDateStr,
+  type CalendarEvent,
+} from "@/lib/reservation-display";
+import { GLASS_PANEL } from "@/lib/utils";
 
 interface CopyShape {
   dateLocale: string;
@@ -195,226 +206,6 @@ const COPY: Record<Locale, CopyShape> = {
   },
 };
 
-// RT-25.6 tick 2 — bundled platform presets, kept inline rather than
-// imported from @/lib/platforms because that module's lazy
-// `import("@/lib/prisma")` gets traced into the client bundle by
-// Turbopack and breaks the build (matches the reports-panel.tsx
-// approach landed in RT-25.5 / commit bd37271). Slugs and colors mirror
-// the seed in prisma/push-schema.ts so the form pills match the
-// calendar bars exactly.
-const FALLBACK_PLATFORM_COLOR = "#6B7280";
-
-const PLATFORM_PRESETS: ReadonlyArray<{ slug: string; displayName: string; color: string }> = [
-  { slug: "airbnb", displayName: "Airbnb", color: "#FF385C" },
-  { slug: "booking", displayName: "Booking.com", color: "#003580" },
-  { slug: "vrbo", displayName: "Vrbo", color: "#245ABC" },
-  { slug: "expedia", displayName: "Expedia", color: "#FFC72C" },
-  { slug: "hostaway", displayName: "Hostaway", color: "#2E5BFF" },
-  { slug: "lodgify", displayName: "Lodgify", color: "#00B5AD" },
-  { slug: "hospitable", displayName: "Hospitable", color: "#1B5E20" },
-  { slug: "smoobu", displayName: "Smoobu", color: "#4A148C" },
-  { slug: "houfy", displayName: "Houfy", color: "#D84315" },
-  { slug: "plumguide", displayName: "Plum Guide", color: "#2E1065" },
-  { slug: "whimstay", displayName: "Whimstay", color: "#FF7043" },
-  { slug: "direct", displayName: "Direct", color: FALLBACK_PLATFORM_COLOR },
-];
-
-const PRESET_BY_SLUG = new Map(PLATFORM_PRESETS.map((p) => [p.slug, p]));
-
-function platformDisplayName(slug: string): string {
-  return PRESET_BY_SLUG.get(slug)?.displayName ?? slug;
-}
-
-function platformColor(slug: string): string {
-  return PRESET_BY_SLUG.get(slug)?.color ?? FALLBACK_PLATFORM_COLOR;
-}
-
-interface CalendarEvent {
-  id: number;
-  platform: string;
-  uid?: string;
-  summary: string;
-  startDate: string;
-  endDate: string;
-}
-
-interface UnifiedStay {
-  start: Date;
-  end: Date;
-  name: string;
-  platform: string;
-  reservationId?: number;
-}
-
-/** Local-date YYYY-MM-DD formatter. Crucial: do NOT use
- *  d.toISOString().substring(0, 10) here — that converts to UTC and
- *  shifts the date by ±1 day in non-UTC timezones, which broke both
- *  the dashboard's "until DATE" text and the dedup heuristic that
- *  compares iCal date strings against Reservation date keys. */
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/** True for iCal summaries that almost always indicate "this is a
- *  generic blocked booking, not a guest name" — Airbnb's "Reserved",
- *  Booking.com's "CLOSED - Not available", host-blocks, etc. Used to
- *  distinguish iCal twins of manually-entered Reservations (which the
- *  host hasn't claimed via the bar-claim popover) from a real second
- *  booking that just happens to overlap on the same dates. */
-function isGenericIcalName(summary: string): boolean {
-  if (!summary) return true;
-  const s = summary.toLowerCase().trim();
-  return (
-    s === "reserved" ||
-    s === "closed" ||
-    s.includes("not available") ||
-    s.includes("blocked") ||
-    s.includes("closed - not available")
-  );
-}
-
-/** Display-safe name for an iCal-imported event. Falls back to the
- *  platform brand name ("Booking.com" / "Airbnb" / …) when the raw
- *  summary is generic-marker text — surfacing "CLOSED - Not available"
- *  as the upcoming-guest label on the dashboard is confusing for the
- *  host. They know it's a fetched stay; the platform name is the
- *  truthful answer until the host claims the bar and gives it a real
- *  guest name. Matches what the calendar grid already does for bar
- *  labels (use-calendar-data.ts swaps generic labels for "Airbnb"
- *  / "Booking" before rendering). */
-function friendlyIcalName(summary: string | null | undefined, platform: string): string {
-  if (!summary || isGenericIcalName(summary)) return platformDisplayName(platform);
-  return summary;
-}
-
-/** Build a deduped list of stays for one property from Reservation rows
- *  + iCal-synced events. Three layers of dedup so the dashboard never
- *  double-counts the SAME booking represented in two places:
- *    1. iCal events whose uid matches a Reservation.linkedEventUid
- *       (the host explicitly claimed the bar) → drop the iCal side.
- *    2. iCal events with generic summaries (Reserved / Blocked / etc)
- *       whose start+end exactly match a Reservation's dates → drop
- *       the iCal side. This catches the very common case of a host
- *       creating a Reservation manually without going through the
- *       bar-claim popover, leaving the iCal twin orphaned.
- *    3. Airbnb host-blocks ("Not available" / "Blocked") are filtered
- *       out — they're not real guests.
- *  Sorted by start asc. */
-function buildUnifiedStays(p: Property, events: CalendarEvent[]): UnifiedStay[] {
-  const linkedUids = new Set(
-    p.reservations.map((r) => r.linkedEventUid).filter((u): u is string => !!u)
-  );
-  // Reservation date-range keys — used to silently merge generic-named
-  // iCal events with the host's manual entry on identical dates.
-  const reservationDateKeys = new Set<string>();
-  for (const r of p.reservations) {
-    const start = toLocalDateStr(new Date(r.checkIn));
-    const end = toLocalDateStr(new Date(r.checkOut));
-    reservationDateKeys.add(`${start}|${end}`);
-  }
-  const stays: UnifiedStay[] = [];
-  for (const r of p.reservations) {
-    const start = new Date(r.checkIn);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(r.checkOut);
-    end.setHours(0, 0, 0, 0);
-    stays.push({
-      start,
-      end,
-      name: r.name,
-      platform: r.platform || "direct",
-      reservationId: r.id,
-    });
-  }
-  for (const ev of events) {
-    if (ev.uid && linkedUids.has(ev.uid)) continue;
-    if (ev.platform === "airbnb" && (ev.summary?.includes("Not available") || ev.summary?.includes("Blocked"))) continue;
-    // Same-dates + generic-summary heuristic: drop the iCal twin.
-    const dateKey = `${ev.startDate}|${ev.endDate}`;
-    if (reservationDateKeys.has(dateKey) && isGenericIcalName(ev.summary || "")) continue;
-    const start = new Date(ev.startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(ev.endDate);
-    end.setHours(0, 0, 0, 0);
-    stays.push({ start, end, name: friendlyIcalName(ev.summary, ev.platform), platform: ev.platform });
-  }
-
-  // Cross-platform echo collapse. A host who runs the normal multi-
-  // platform setup syncs their master calendar (usually Airbnb) INTO
-  // Booking / Trip.com / Agoda, so every confirmed booking is
-  // reflected back out in EVERY platform's exported iCal. RentTools
-  // imports all those feeds and ends up with N copies of the same
-  // booking — and detectDoubleBookings() then flags (N-1) false
-  // "double booking" conflicts for every single reservation.
-  //
-  // Two stays with the EXACT same (start, end) date range are
-  // collapsed to one. Exact-match is the safe signature: a genuine
-  // independent double-booking with byte-identical check-in AND
-  // check-out dates is rare, and even when it happens the calendar
-  // grid still renders both bars (separate code path) so the host
-  // isn't blind to it. A partial overlap (Booking 1-10 + Trip 5-7)
-  // is NOT collapsed — that can't be a clean echo and still warrants
-  // a conflict warning.
-  //
-  // When collapsing, keep the entry with the most informative name:
-  // a real guest name beats a generic platform block string
-  // ("RoomStatus Fully booked", "CLOSED - Not available", "Reserved").
-  const collapsed: UnifiedStay[] = [];
-  const byRange = new Map<string, UnifiedStay>();
-  for (const s of stays) {
-    const key = `${toLocalDateStr(s.start)}|${toLocalDateStr(s.end)}`;
-    const existing = byRange.get(key);
-    if (!existing) {
-      byRange.set(key, s);
-      collapsed.push(s);
-      continue;
-    }
-    // Same date range already seen — this is an echo. Upgrade the
-    // kept copy's name/platform if the echo carries a real guest
-    // name and the kept copy only had a generic block string.
-    if (isGenericIcalName(existing.name) && !isGenericIcalName(s.name)) {
-      existing.name = s.name;
-      existing.platform = s.platform;
-      if (s.reservationId) existing.reservationId = s.reservationId;
-    }
-  }
-
-  collapsed.sort((a, b) => a.start.getTime() - b.start.getTime());
-  return collapsed;
-}
-
-/** Per-property double-booking detection. Returns the list of overlapping
- *  pairs whose overlap range still touches today-or-future, so a stale
- *  past conflict doesn't show as an active alert on the dashboard. */
-function detectDoubleBookings(stays: UnifiedStay[], today: Date): Array<{
-  aName: string;
-  bName: string;
-  overlapStart: Date;
-  overlapEnd: Date;
-}> {
-  const out: Array<{ aName: string; bName: string; overlapStart: Date; overlapEnd: Date }> = [];
-  for (let i = 0; i < stays.length; i++) {
-    for (let j = i + 1; j < stays.length; j++) {
-      const a = stays[i];
-      const b = stays[j];
-      // Strict overlap: a.start < b.end AND b.start < a.end. Touching
-      // dates (a.end === b.start) are NOT a conflict — that's a normal
-      // turnover (one guest checks out, next checks in same day).
-      if (a.start < b.end && b.start < a.end) {
-        const overlapStart = a.start > b.start ? a.start : b.start;
-        const overlapEnd = a.end < b.end ? a.end : b.end;
-        if (overlapEnd > today) {
-          out.push({ aName: a.name, bName: b.name, overlapStart, overlapEnd });
-        }
-      }
-    }
-  }
-  return out;
-}
-
 interface DashboardProps {
   properties: Property[];
   /**
@@ -473,17 +264,11 @@ export function Dashboard({
   const [allLinks, setAllLinks] = useState<Record<number, CalendarLink[]>>({});
   const [allOverrides, setAllOverrides] = useState<Record<number, DateOverride[]>>({});
   const [loadingCalendarData, setLoadingCalendarData] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   // Inline property rename from the dashboard header (pencil next to
   // the title). Mirrors the rename in Sync settings — same PATCH.
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState("");
   const [savingName, setSavingName] = useState(false);
-  // Inline rename on a property card in the portfolio (all-properties)
-  // view — editingCardId holds the card currently being renamed.
-  const [editingCardId, setEditingCardId] = useState<number | null>(null);
-  const [cardNameDraft, setCardNameDraft] = useState("");
-  const [savingCardId, setSavingCardId] = useState<number | null>(null);
   // RT-25.6 tick 2 — distinct platform slugs across the user's CalendarLinks.
   // Populated regardless of selectedProperty so the form pills always reflect
   // the user's real platform set (Airbnb + Booking + any custom platforms).
@@ -641,11 +426,6 @@ export function Dashboard({
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }, []);
-  const sevenDaysOutStr = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }, []);
 
   // RT-25.6 tick 5 — today's check-ins / check-outs across all
   // properties. Drives the "Today" strip at the top of the global
@@ -665,66 +445,10 @@ export function Dashboard({
     return { todayCheckIns: ins, todayCheckOuts: outs };
   }, [allReservations, selectedProperty, todayStr]);
 
-  // Four buckets so the host scans the list top-down by urgency:
-  //   active    — currently staying (checkIn ≤ today < checkOut)
-  //   next7     — arriving within the next 7 days
-  //   later     — arriving more than 7 days out
-  //   past      — already checked out (collapsed, click to expand)
-  const { active, next7, later, past } = useMemo(() => {
-    if (selectedProperty) {
-      return { active: [], next7: [], later: [], past: [] as typeof allReservations };
-    }
-    const activeBucket: typeof allReservations = [];
-    const next7Bucket: typeof allReservations = [];
-    const laterBucket: typeof allReservations = [];
-    const pastBucket: typeof allReservations = [];
-    for (const r of allReservations) {
-      if (r.checkOut <= todayStr) {
-        pastBucket.push(r);
-      } else if (r.checkIn <= todayStr) {
-        // checkIn already happened AND checkOut still ahead → active.
-        activeBucket.push(r);
-      } else if (r.checkIn < sevenDaysOutStr) {
-        next7Bucket.push(r);
-      } else {
-        laterBucket.push(r);
-      }
-    }
-    activeBucket.sort((a, b) => a.checkOut.localeCompare(b.checkOut)); // earliest-leave first
-    next7Bucket.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
-    laterBucket.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
-    pastBucket.sort((a, b) => b.checkOut.localeCompare(a.checkOut));
-    return { active: activeBucket, next7: next7Bucket, later: laterBucket, past: pastBucket };
-  }, [allReservations, selectedProperty, todayStr, sevenDaysOutStr]);
-
-  // RT-25.10 tick 3 — derive whether each visible bucket overlaps any
-  // cleaner-conflict date so the badge only shows when relevant.
   const hasCleanerConflictToday = useMemo(
     () => cleanerConflictDates.includes(todayStr),
     [cleanerConflictDates, todayStr]
   );
-  const hasCleanerConflictNext7 = useMemo(
-    () => cleanerConflictDates.some((d) => d >= todayStr && d < sevenDaysOutStr),
-    [cleanerConflictDates, todayStr, sevenDaysOutStr]
-  );
-
-  // Per-property "now / next" data drives the property cards: who is
-  // currently in the property and how many nights they have left, plus
-  // the next arriving guest. Computed once per render against the
-  // unified stay list so reservations + iCal events stay in lockstep.
-  const propertyOccupancy = useMemo(() => {
-    if (selectedProperty) return new Map<number, { current: UnifiedStay | null; next: UnifiedStay | null }>();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const map = new Map<number, { current: UnifiedStay | null; next: UnifiedStay | null }>();
-    for (const p of properties) {
-      const stays = buildUnifiedStays(p, allSyncedEvents[p.id] || []);
-      const current = stays.find((s) => s.start <= today && s.end > today) ?? null;
-      const next = stays.find((s) => s.start > today) ?? null;
-      map.set(p.id, { current, next });
-    }
-    return map;
-  }, [properties, allSyncedEvents, selectedProperty]);
 
   // Double-booking + no-cleaner alerts. Surfaced in the Alerts strip
   // above the property cards so the host sees structural problems
@@ -762,25 +486,9 @@ export function Dashboard({
     return { doubleBookings, propertiesWithoutCalendar };
   }, [properties, allSyncedEvents, allLinks, selectedProperty]);
 
-  const trimmedQuery = searchQuery.trim().toLowerCase();
-
-  // When searching, flatten all buckets and filter — sectioning only
-  // makes sense for the daily-ops scan, not for "find a guest by name".
-  // Per-property mode also stays flat (preserves prior behavior).
-  const sortedFlat = useMemo(() => {
-    if (selectedProperty) return allReservations;
-    return [...next7, ...later, ...past];
-  }, [selectedProperty, allReservations, next7, later, past]);
-
-  const displayReservations = trimmedQuery
-    ? sortedFlat.filter((r) => r.name.toLowerCase().includes(trimmedQuery))
-    : sortedFlat;
-
-  const [showPast, setShowPast] = useState(false);
-  const useSections = !selectedProperty && !trimmedQuery && (active.length + next7.length + later.length + past.length) > 0;
+  const displayReservations = selectedProperty ? allReservations : [];
 
   // RT-25.6 tick 7 — in-form conflict warning. Surfaces overlapping
-  // reservations + synced calendar events on the picked property/date
   // range BEFORE the host hits "Create Reservation". Addresses a slice
   // of the tick 2 deferred "show what's already booked" item without
   // touching DateSlider's internals (a separate larger lift).
@@ -895,7 +603,9 @@ export function Dashboard({
   };
 
   const title = selectedProperty ? selectedProperty.name : t("dashboard.title");
-  const resCount = displayReservations.length;
+  const resCount = selectedProperty
+    ? displayReservations.length
+    : allReservations.filter((r) => r.checkOut > todayStr).length;
   const subtitle = selectedProperty
     ? c.reservationsCount(resCount)
     : c.reservationsAcross(resCount, properties.length);
@@ -927,22 +637,6 @@ export function Dashboard({
       setEditingName(false);
     } finally {
       setSavingName(false);
-    }
-  };
-
-  const handleSaveCardName = async (id: number, original: string) => {
-    if (!onUpdateProperty) return;
-    const trimmed = cardNameDraft.trim();
-    if (!trimmed || trimmed === original) {
-      setEditingCardId(null);
-      return;
-    }
-    setSavingCardId(id);
-    try {
-      await onUpdateProperty(id, { name: trimmed });
-      setEditingCardId(null);
-    } finally {
-      setSavingCardId(null);
     }
   };
 
@@ -1137,7 +831,7 @@ export function Dashboard({
           all properties. Skipped on quiet days so the dashboard stays
           calm when nothing is happening. RT-25.6 tick 5. */}
       {!selectedProperty && properties.length > 0 && (todayCheckIns.length > 0 || todayCheckOuts.length > 0) && (
-        <div className="rounded-lg border border-[var(--line)] bg-[var(--bg-2)] p-4">
+        <div className={`rounded-lg p-4 ${GLASS_PANEL}`}>
           <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--ink-3)]">
               {t("dashboard.today")}
@@ -1280,7 +974,7 @@ export function Dashboard({
                 {dashboardAlerts.propertiesWithoutCalendar.map((p, i) => (
                   <span key={p.id} className="inline-flex items-center gap-1.5">
                     <Link
-                      href={`/dashboard?property=${p.id}&view=sync`}
+                      href={`/dashboard?property=${p.id}&view=property-settings`}
                       className="font-medium text-amber-800 underline-offset-2 hover:text-amber-900 hover:underline dark:text-amber-300 dark:hover:text-amber-200"
                     >
                       {p.name}
@@ -1291,7 +985,7 @@ export function Dashboard({
                   </span>
                 ))}
                 <Link
-                  href={`/dashboard?property=${dashboardAlerts.propertiesWithoutCalendar[0].id}&view=sync`}
+                  href={`/dashboard?property=${dashboardAlerts.propertiesWithoutCalendar[0].id}&view=property-settings`}
                   className="ml-1 inline-flex items-center gap-1 rounded-md bg-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-900 transition-colors hover:bg-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
                 >
                   {c.connectCalendars}
@@ -1303,385 +997,33 @@ export function Dashboard({
         </div>
       )}
 
-      {/* Property cards (dashboard mode only). Each card surfaces the
-          three things a host actually scans the dashboard for: who is
-          IN the property right now (with nights remaining), who is
-          coming NEXT (with arrival date), and any sync-error flag. */}
-      {!selectedProperty && properties.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {properties.map(p => {
-            const occ = propertyOccupancy.get(p.id);
-            const current = occ?.current ?? null;
-            const next = occ?.next ?? null;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const nightsLeft = current ? Math.round((current.end.getTime() - today.getTime()) / 86400000) : 0;
-            const daysUntilNext = next ? Math.round((next.start.getTime() - today.getTime()) / 86400000) : 0;
-            const futureRes = p.reservations.filter(r => new Date(r.checkOut) >= new Date());
-            const links = allLinks[p.id];
-            const failingLinks = Array.isArray(links)
-              ? links.filter((l) => Boolean(l.lastError))
-              : [];
-            const hasSyncError = failingLinks.length > 0;
-            return (
-              /* Card converted from <button> to <div> so the inner
-                 "+ Reservation" Link is valid HTML (no nested
-                 interactive elements). The outer click handler
-                 still routes to the property's calendar. */
-              <div
-                key={p.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelectProperty(p.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelectProperty(p.id);
-                  }
-                }}
-                className="group rounded-xl border border-[var(--line)] bg-[var(--bg-2)] p-5 text-left transition-all hover:border-[var(--line-2)] hover:bg-[var(--bg-3)] cursor-pointer"
-              >
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  {editingCardId === p.id ? (
-                    <div
-                      className="flex min-w-0 flex-1 items-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        value={cardNameDraft}
-                        onChange={(e) => setCardNameDraft(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === "Enter") handleSaveCardName(p.id, p.name);
-                          if (e.key === "Escape") setEditingCardId(null);
-                        }}
-                        autoFocus
-                        disabled={savingCardId === p.id}
-                        className="min-w-0 flex-1 rounded-md border border-[var(--line-2)] bg-[var(--bg)] px-2 py-0.5 text-sm font-semibold text-[var(--ink)] outline-none focus:border-[var(--ink)] disabled:opacity-60"
-                      />
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleSaveCardName(p.id, p.name); }}
-                        disabled={savingCardId === p.id}
-                        aria-label={t("common.save")}
-                        title={t("common.save")}
-                        className="shrink-0 rounded-md p-1 text-emerald-500 hover:bg-emerald-500/10 disabled:opacity-50"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setEditingCardId(null); }}
-                        disabled={savingCardId === p.id}
-                        aria-label={t("common.cancel")}
-                        title={t("common.cancel")}
-                        className="shrink-0 rounded-md p-1 text-[var(--ink-4)] hover:bg-[var(--line-2)] hover:text-[var(--ink)] disabled:opacity-50"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex min-w-0 items-center gap-1">
-                      <h3 className="text-sm font-semibold text-[var(--ink)] transition-colors truncate">{p.name}</h3>
-                      {onUpdateProperty && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCardNameDraft(p.name);
-                            setEditingCardId(p.id);
-                          }}
-                          aria-label={t("common.edit")}
-                          title={t("common.edit")}
-                          className="shrink-0 rounded p-0.5 text-[var(--ink-4)] transition-colors hover:bg-[var(--line-2)] hover:text-[var(--ink)]"
-                        >
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zM19.5 7.125L16.875 4.5" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  <Link
-                    href={`/dashboard?property=${p.id}&view=calendar`}
-                    onClick={(e) => e.stopPropagation()}
-                    title={t("dashboard.newReservation")}
-                    aria-label={t("dashboard.newReservation")}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-md bg-[var(--m-accent)] px-2 py-1 text-[11px] font-medium text-white transition-colors hover:bg-[var(--m-accent-2)]"
-                  >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    <span className="hidden sm:inline">{c.reservationLabel}</span>
-                  </Link>
-                </div>
-                <div className="space-y-2">
-                  {/* Current guest line — ALWAYS rendered so the card
-                      height stays stable regardless of whether the
-                      property is currently occupied. While the events
-                      fetch is in flight the line shows a muted
-                      placeholder; once data arrives it swaps in
-                      place without nudging anything below. */}
-                  <div className="flex items-baseline gap-2 text-sm min-h-[20px]">
-                    {loadingCalendarData ? (
-                      <div className="h-3 w-32 rounded bg-[var(--line-2)]/60 animate-pulse" />
-                    ) : current ? (
-                      <>
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: platformColor(current.platform) }}
-                        />
-                        <span className="font-semibold text-[var(--ink)] truncate">{current.name}</span>
-                        <span className="text-[11px] text-[var(--ink-3)] whitespace-nowrap">
-                          {c.untilNightsLeft(formatDate(toLocalDateStr(current.end)), nightsLeft)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-[var(--ink-3)]">
-                        {c.availableLabel}
-                      </span>
-                    )}
-                  </div>
-                  {/* Next guest line — ALSO always rendered (with a
-                      placeholder when no upcoming stay) so the card
-                      doesn't grow / shrink as data lands. Same min-h
-                      as the line above keeps the row group stable. */}
-                  <div className="flex items-baseline gap-2 text-xs min-h-[16px]">
-                    {loadingCalendarData ? (
-                      <div className="h-2.5 w-24 rounded bg-[var(--line-2)]/40 animate-pulse" />
-                    ) : next ? (
-                      <>
-                        <span className="text-[var(--ink-4)]">{c.nextLabel}</span>
-                        <span
-                          className="h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: platformColor(next.platform) }}
-                        />
-                        <span className="font-medium text-[var(--ink-2)] truncate">{next.name}</span>
-                        <span className="text-[var(--ink-4)] whitespace-nowrap">
-                          {c.inDays(formatDate(toLocalDateStr(next.start)), daysUntilNext)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-[var(--ink-4)]">
-                        {c.noUpcoming}
-                      </span>
-                    )}
-                  </div>
-                  {/* Footer meta — booking count, min nights, sync chip. */}
-                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--ink-4)] pt-1">
-                    <span>{futureRes.length} {c.bookingsCountShort}</span>
-                    <span>·</span>
-                    <span>{c.minNightsLabel(p.minNights)}</span>
-                    {hasSyncError && (
-                      <>
-                        <span>·</span>
-                        <span
-                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-amber-300"
-                          style={{ backgroundColor: "rgba(217,119,6,0.18)" }}
-                          title={failingLinks.map((l) => `${platformDisplayName(l.platform)}: ${l.lastError}`).join("\n")}
-                        >
-                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                          </svg>
-                          {c.syncShort}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-
-      {/* Search */}
-      {allReservations.length > 0 && (
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={c.searchPlaceholder}
-            className="h-9 w-full rounded-md border border-[var(--line)] bg-[var(--bg-2)] pl-9 pr-8 text-sm text-[var(--ink)] placeholder-[var(--ink-4)] outline-none transition-colors focus:border-[var(--line-2)]"
-          />
-          <svg className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-4)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.2-5.2M16.5 10.5a6 6 0 11-12 0 6 6 0 0112 0z" />
-          </svg>
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--ink-4)] hover:text-[var(--ink)]"
-              aria-label="Clear search"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Reservations List */}
-      {displayReservations.length > 0 || (useSections && past.length > 0) ? (
-        <div className="rounded-lg border border-[var(--line)] bg-[var(--bg-2)]">
+      {/* Per-property reservation list (guests view fallback) */}
+      {selectedProperty && displayReservations.length > 0 ? (
+        <div className={`rounded-lg ${GLASS_PANEL}`}>
           <div className="border-b border-[var(--line)] px-4 py-3">
             <h2 className="text-xs font-medium text-[var(--ink-3)]">
-              {selectedProperty
-                ? t("dashboard.reservations")
-                : t("dashboard.upcomingReservations")}
-              {trimmedQuery && (
-                <span className="ml-2 text-[var(--ink-4)]">
-                  · {displayReservations.length} {c.foundLabel}
-                </span>
-              )}
+              {t("dashboard.reservations")}
             </h2>
           </div>
-          {useSections ? (
-            <div>
-              {/* Currently staying — shows active stays sorted by
-                  earliest checkout, so the host can see who's about
-                  to leave first. Always-shown header (even if it's
-                  the only section) so the bucket is recognisable. */}
-              {active.length > 0 && (
-                <>
-                  <ReservationSectionHeader
-                    label={c.currentlyStaying}
-                  />
-                  {active.map((res, i) => (
-                    <ReservationRow
-                      key={res.id}
-                      res={res}
-                      isLast={i === active.length - 1 && next7.length === 0 && later.length === 0 && (!showPast || past.length === 0)}
-                      hideProperty={false}
-                      formatDate={formatDate}
-                      dayCount={dayCount}
-                      locale={locale}
-                      onClick={() => handleRowClick(res.propertyId, res.id)}
-                      muted={false}
-                    />
-                  ))}
-                </>
-              )}
-              {next7.length > 0 && (
-                <>
-                  {(active.length > 0 || later.length > 0 || past.length > 0) && (
-                    <ReservationSectionHeader
-                      label={t("calendar.next7Days")}
-                      badge={hasCleanerConflictNext7 ? (
-                        <a
-                          href="?view=cleaning"
-                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-amber-300 transition-colors hover:bg-amber-500/15"
-                          style={{ backgroundColor: "rgba(217,119,6,0.18)" }}
-                          title={t("dashboard.cleanerConflictHint")}
-                        >
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                          </svg>
-                          {t("dashboard.cleanerConflictBadge")}
-                        </a>
-                      ) : undefined}
-                    />
-                  )}
-                  {next7.map((res, i) => (
-                    <ReservationRow
-                      key={res.id}
-                      res={res}
-                      isLast={i === next7.length - 1 && later.length === 0 && (!showPast || past.length === 0)}
-                      hideProperty={false}
-                      formatDate={formatDate}
-                      dayCount={dayCount}
-                      locale={locale}
-                      onClick={() => handleRowClick(res.propertyId, res.id)}
-                      muted={false}
-                    />
-                  ))}
-                </>
-              )}
-              {later.length > 0 && (
-                <>
-                  <ReservationSectionHeader label={t("calendar.later")} />
-                  {later.map((res, i) => (
-                    <ReservationRow
-                      key={res.id}
-                      res={res}
-                      isLast={i === later.length - 1 && (!showPast || past.length === 0)}
-                      hideProperty={false}
-                      formatDate={formatDate}
-                      dayCount={dayCount}
-                      locale={locale}
-                      onClick={() => handleRowClick(res.propertyId, res.id)}
-                      muted={false}
-                    />
-                  ))}
-                </>
-              )}
-              {past.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setShowPast((v) => !v)}
-                    className="flex w-full items-center justify-between border-b border-[var(--line)]/50 bg-[var(--bg-3)]/40 px-4 py-1.5 text-left transition-colors hover:bg-[var(--bg-3)]/70"
-                  >
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-4)]">
-                      {showPast
-                        ? t("dashboard.hidePast")
-                        : t("dashboard.showPast").replace("{n}", String(past.length))}
-                    </span>
-                    <svg
-                      className={`h-3.5 w-3.5 text-[var(--ink-4)] transition-transform ${showPast ? "rotate-180" : ""}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                    </svg>
-                  </button>
-                  {showPast && past.map((res, i) => (
-                    <ReservationRow
-                      key={res.id}
-                      res={res}
-                      isLast={i === past.length - 1}
-                      hideProperty={false}
-                      formatDate={formatDate}
-                      dayCount={dayCount}
-                      locale={locale}
-                      onClick={() => handleRowClick(res.propertyId, res.id)}
-                      muted={true}
-                    />
-                  ))}
-                </>
-              )}
-            </div>
-          ) : (
-            <div>
-              {displayReservations.map((res, i) => (
-                <ReservationRow
-                  key={res.id}
-                  res={res}
-                  isLast={i === displayReservations.length - 1}
-                  hideProperty={Boolean(selectedProperty)}
-                  formatDate={formatDate}
-                  dayCount={dayCount}
-                  locale={locale}
-                  onClick={() => handleRowClick(res.propertyId, res.id)}
-                  muted={false}
-                />
-              ))}
-            </div>
-          )}
+          <div>
+            {displayReservations.map((res, i) => (
+              <ReservationRow
+                key={res.id}
+                res={res}
+                isLast={i === displayReservations.length - 1}
+                hideProperty
+                formatDate={formatDate}
+                dayCount={dayCount}
+                locale={locale}
+                onClick={() => handleRowClick(res.propertyId, res.id)}
+                muted={false}
+              />
+            ))}
+          </div>
         </div>
-      ) : !isZeroProperties ? (
+      ) : selectedProperty ? (
         <div className="rounded-lg border border-dashed border-[var(--line)] py-16 text-center">
-          <p className="text-sm text-[var(--ink-4)]">
-            {selectedProperty
-              ? t("dashboard.noReservations")
-              : t("dashboard.noReservationsGlobal")}
-          </p>
+          <p className="text-sm text-[var(--ink-4)]">{t("dashboard.noReservations")}</p>
         </div>
       ) : null}
 
@@ -1709,17 +1051,6 @@ export function Dashboard({
 
       {!isZeroProperties && <ProTipBar />}
     </div>
-    </div>
-  );
-}
-
-function ReservationSectionHeader({ label, badge }: { label: string; badge?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between border-b border-[var(--line)]/50 bg-[var(--bg-3)]/40 px-4 py-1.5">
-      <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-4)]">
-        {label}
-      </span>
-      {badge}
     </div>
   );
 }

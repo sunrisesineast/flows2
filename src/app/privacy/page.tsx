@@ -5,7 +5,7 @@ import { applySeoOverrides } from "@/lib/seo";
 
 const PRIVACY_TITLE = "Privacy Policy";
 const PRIVACY_DESCRIPTION =
-  "How RentTools collects, uses, stores, and protects your data — and how to access, export, or delete it.";
+  "How InnkeeperOS collects, uses, stores, and protects your data — and how to access, export, or delete it.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const base: Metadata = {
@@ -14,14 +14,14 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: { canonical: "/privacy" },
     openGraph: {
       type: "article",
-      title: `${PRIVACY_TITLE} · RentTools`,
+      title: `${PRIVACY_TITLE} · InnkeeperOS`,
       description: PRIVACY_DESCRIPTION,
       url: "/privacy",
-      siteName: "RentTools",
+      siteName: "InnkeeperOS",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${PRIVACY_TITLE} · RentTools`,
+      title: `${PRIVACY_TITLE} · InnkeeperOS`,
       description: PRIVACY_DESCRIPTION,
     },
   };
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
         <div className="mt-8 space-y-8 text-sm leading-relaxed text-[var(--ink-2)] sm:text-base">
           <section>
             <p>
-              This Privacy Policy describes how RentTools (&quot;the Service&quot;,
+              This Privacy Policy describes how InnkeeperOS (&quot;the Service&quot;,
               &quot;we&quot;, &quot;our&quot;), operated by {OPERATOR_NAME} as an
               independent maintainer, collects, uses, stores, and protects information when
               you use the hosted instance at{" "}
@@ -314,7 +314,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="mb-2 text-lg font-semibold text-[var(--ink)]">10. Guest passport data — your responsibility</h2>
             <p>
-              When you upload guest passports to RentTools you remain the data controller
+              When you upload guest passports to InnkeeperOS you remain the data controller
               under GDPR for that information. You must have your own lawful basis to
               collect and retain it (typically a hospitality registration obligation
               under your local law, sometimes consent), inform your guests, and respect
@@ -380,7 +380,7 @@ export default function PrivacyPage() {
 
       <footer className="border-t border-[var(--line)]">
         <div className="mx-auto flex max-w-3xl flex-col items-center justify-between gap-3 px-4 py-6 text-xs text-[var(--ink-4)] sm:flex-row sm:px-6">
-          <p>© 2026 RentTools · MIT License</p>
+          <p>© 2026 InnkeeperOS · MIT License</p>
           <nav className="flex gap-4">
             <Link href="/" className="hover:text-[var(--ink)]">Home</Link>
             <Link href="/terms" className="hover:text-[var(--ink)]">Terms</Link>

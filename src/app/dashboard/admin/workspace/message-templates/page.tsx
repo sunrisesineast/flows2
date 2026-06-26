@@ -167,7 +167,7 @@ export default function AdminMessageTemplatesPage() {
                 className="overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--bg-2)]"
               >
                 <Link
-                  href={`/dashboard?property=${g.property.id}&view=sync`}
+                  href={`/dashboard?property=${g.property.id}&view=property-settings`}
                   className="flex items-center justify-between border-b border-[var(--line)] bg-[var(--bg-3)]/40 px-4 py-2.5 text-sm font-medium text-[var(--ink)] transition-colors hover:bg-[var(--bg-3)]"
                 >
                   <span>{g.property.name}</span>

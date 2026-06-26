@@ -5,32 +5,32 @@ import { localizedAlternates } from "@/lib/i18n/alternates";
 import { toOgLocale } from "@/lib/i18n/locale-tags";
 import type { Locale } from "@/lib/i18n/translations";
 
-// See signup/layout.tsx — title template appends "· RentTools" automatically.
+// See signup/layout.tsx — title template appends "· InnkeeperOS" automatically.
 const LOGIN_COPY: Record<Locale, { title: string; description: string }> = {
   en: {
     title: "Sign in",
     description:
-      "Sign in to RentTools to manage your short-term rental calendars, cleaning schedules, and guest data.",
+      "Sign in to InnkeeperOS to manage your short-term rental calendars, cleaning schedules, and guest data.",
   },
   ru: {
     title: "Войти",
     description:
-      "Войдите в RentTools, чтобы управлять календарями аренды, расписанием уборок и данными гостей.",
+      "Войдите в InnkeeperOS, чтобы управлять календарями аренды, расписанием уборок и данными гостей.",
   },
   de: {
     title: "Anmelden",
     description:
-      "Melden Sie sich bei RentTools an, um Mietkalender, Reinigungspläne und Gastdaten zu verwalten.",
+      "Melden Sie sich bei InnkeeperOS an, um Mietkalender, Reinigungspläne und Gastdaten zu verwalten.",
   },
   fr: {
     title: "Se connecter",
     description:
-      "Connectez-vous à RentTools pour gérer vos calendriers de location, vos plannings de ménage et vos données voyageurs.",
+      "Connectez-vous à InnkeeperOS pour gérer vos calendriers de location, vos plannings de ménage et vos données voyageurs.",
   },
   es: {
     title: "Iniciar sesión",
     description:
-      "Inicie sesión en RentTools para gestionar los calendarios de su alquiler vacacional, los planes de limpieza y los datos de los huéspedes.",
+      "Inicie sesión en InnkeeperOS para gestionar los calendarios de su alquiler vacacional, los planes de limpieza y los datos de los huéspedes.",
   },
 };
 
@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title: copy.title,
       description: copy.description,
       url: alts.canonical,
-      siteName: "RentTools",
+      siteName: "InnkeeperOS",
       locale: toOgLocale(locale),
     },
     twitter: { card: "summary_large_image", title: copy.title, description: copy.description },

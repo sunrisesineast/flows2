@@ -658,7 +658,7 @@ export function DateActionsPopover({
       // it would be ambiguous which booking to shrink.
       //
       // Skipped when the bar has no reservationId (raw iCal-only
-      // event — RentTools can't mutate the source feed).
+      // event — InnkeeperOS can't mutate the source feed).
       //
       // Skipped when the bar has eventUid (= bar comes from an iCal
       // event, including claims where the host has attached a guest

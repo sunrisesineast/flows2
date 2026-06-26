@@ -167,17 +167,17 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
     privacy: {
       title: "Privacy & data handling",
       summary:
-        "Only your host sees your answers. Stored on RentTools.io — open-source software, HTTPS only, no tracking.",
+        "Only your host sees your answers. Stored on InnkeeperOS — open-source software, HTTPS only, no tracking.",
       showDetails: "Details",
       hideDetails: "Hide",
       bullets: [
         {
           title: "Who sees this",
-          body: "Only the host of the property you booked. Answers go straight to their RentTools account. Nothing is shared, sold, or used for advertising.",
+          body: "Only the host of the property you booked. Answers go straight to their InnkeeperOS account. Nothing is shared, sold, or used for advertising.",
         },
         {
           title: "Where it's stored",
-          body: "RentTools.io is an open-source tool — the source code is public so anyone can verify what happens to your data. The connection to this form is HTTPS-encrypted.",
+          body: "InnkeeperOS is an open-source tool — the source code is public so anyone can verify what happens to your data. The connection to this form is HTTPS-encrypted.",
         },
         {
           title: "No tracking",
@@ -188,7 +188,7 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
           body: "You can ask your host to delete your answers at any time, or contact the operator at support@renttools.io for any privacy question, access request, or complaint.",
         },
       ],
-      fullPolicyLabel: "Read the full RentTools privacy policy",
+      fullPolicyLabel: "Read the full InnkeeperOS privacy policy",
       sourceLinkLabel: "source on GitHub",
     },
   },
@@ -209,17 +209,17 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
     privacy: {
       title: "Конфиденциальность и обработка данных",
       summary:
-        "Ваши ответы видит только хозяин объекта. Данные хранятся на RentTools.io — открытое ПО, только HTTPS, без отслеживания.",
+        "Ваши ответы видит только хозяин объекта. Данные хранятся в InnkeeperOS — открытое ПО, только HTTPS, без отслеживания.",
       showDetails: "Подробнее",
       hideDetails: "Свернуть",
       bullets: [
         {
           title: "Кто видит эти данные",
-          body: "Только хозяин выбранного вами объекта. Ответы попадают сразу в его аккаунт RentTools. Мы не передаём, не продаём и не используем их в рекламных целях.",
+          body: "Только хозяин выбранного вами объекта. Ответы попадают сразу в его аккаунт InnkeeperOS. Мы не передаём, не продаём и не используем их в рекламных целях.",
         },
         {
           title: "Где хранятся данные",
-          body: "RentTools.io — это открытое программное обеспечение, исходный код общедоступен, поэтому любой может проверить, что происходит с вашими данными. Соединение с этой формой защищено HTTPS-шифрованием.",
+          body: "InnkeeperOS — это открытое программное обеспечение, исходный код общедоступен, поэтому любой может проверить, что происходит с вашими данными. Соединение с этой формой защищено HTTPS-шифрованием.",
         },
         {
           title: "Никакого отслеживания",
@@ -230,7 +230,7 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
           body: "Вы можете в любой момент попросить хозяина удалить ваши ответы или написать оператору по адресу support@renttools.io по любому вопросу о конфиденциальности, доступе к данным или жалобе.",
         },
       ],
-      fullPolicyLabel: "Полная политика конфиденциальности RentTools",
+      fullPolicyLabel: "Полная политика конфиденциальности InnkeeperOS",
       sourceLinkLabel: "исходный код на GitHub",
     },
   },
@@ -251,17 +251,17 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
     privacy: {
       title: "Datenschutz & Datenverarbeitung",
       summary:
-        "Nur Ihr Gastgeber sieht Ihre Antworten. Gespeichert auf RentTools.io — Open-Source-Software, ausschließlich HTTPS, kein Tracking.",
+        "Nur Ihr Gastgeber sieht Ihre Antworten. Gespeichert auf InnkeeperOS — Open-Source-Software, ausschließlich HTTPS, kein Tracking.",
       showDetails: "Details",
       hideDetails: "Ausblenden",
       bullets: [
         {
           title: "Wer sieht diese Angaben",
-          body: "Nur der Gastgeber der von Ihnen gebuchten Unterkunft. Ihre Antworten gehen direkt in dessen RentTools-Konto. Es findet keine Weitergabe, kein Verkauf und keine Verwendung für Werbung statt.",
+          body: "Nur der Gastgeber der von Ihnen gebuchten Unterkunft. Ihre Antworten gehen direkt in dessen InnkeeperOS-Konto. Es findet keine Weitergabe, kein Verkauf und keine Verwendung für Werbung statt.",
         },
         {
           title: "Wo werden die Daten gespeichert",
-          body: "RentTools.io ist ein Open-Source-Werkzeug — der Quellcode ist öffentlich, jeder kann nachvollziehen, was mit Ihren Daten geschieht. Die Verbindung zu diesem Formular ist HTTPS-verschlüsselt.",
+          body: "InnkeeperOS ist ein Open-Source-Werkzeug — der Quellcode ist öffentlich, jeder kann nachvollziehen, was mit Ihren Daten geschieht. Die Verbindung zu diesem Formular ist HTTPS-verschlüsselt.",
         },
         {
           title: "Kein Tracking",
@@ -272,7 +272,7 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
           body: "Sie können Ihren Gastgeber jederzeit auffordern, Ihre Antworten zu löschen, oder den Betreiber unter support@renttools.io zu allen Fragen rund um Datenschutz, Auskunft oder Beschwerde kontaktieren.",
         },
       ],
-      fullPolicyLabel: "Vollständige Datenschutzerklärung von RentTools",
+      fullPolicyLabel: "Vollständige Datenschutzerklärung von InnkeeperOS",
       sourceLinkLabel: "Quellcode auf GitHub",
     },
   },
@@ -293,17 +293,17 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
     privacy: {
       title: "Confidentialité et traitement des données",
       summary:
-        "Seul votre hôte voit vos réponses. Stockées sur RentTools.io — logiciel open source, HTTPS uniquement, sans pistage.",
+        "Seul votre hôte voit vos réponses. Stockées sur InnkeeperOS — logiciel open source, HTTPS uniquement, sans pistage.",
       showDetails: "Détails",
       hideDetails: "Masquer",
       bullets: [
         {
           title: "Qui voit ces informations",
-          body: "Uniquement l'hôte du logement que vous avez réservé. Vos réponses sont transmises directement à son compte RentTools. Aucun partage, aucune vente, aucune utilisation à des fins publicitaires.",
+          body: "Uniquement l'hôte du logement que vous avez réservé. Vos réponses sont transmises directement à son compte InnkeeperOS. Aucun partage, aucune vente, aucune utilisation à des fins publicitaires.",
         },
         {
           title: "Où elles sont stockées",
-          body: "RentTools.io est un outil open source — le code source est public, ce qui permet à quiconque de vérifier ce qui est fait de vos données. La connexion à ce formulaire est chiffrée en HTTPS.",
+          body: "InnkeeperOS est un outil open source — le code source est public, ce qui permet à quiconque de vérifier ce qui est fait de vos données. La connexion à ce formulaire est chiffrée en HTTPS.",
         },
         {
           title: "Aucun pistage",
@@ -314,7 +314,7 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
           body: "Vous pouvez à tout moment demander à votre hôte de supprimer vos réponses, ou écrire à l'opérateur à support@renttools.io pour toute question, demande d'accès ou réclamation concernant la confidentialité.",
         },
       ],
-      fullPolicyLabel: "Politique de confidentialité complète de RentTools",
+      fullPolicyLabel: "Politique de confidentialité complète de InnkeeperOS",
       sourceLinkLabel: "code source sur GitHub",
     },
   },
@@ -335,17 +335,17 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
     privacy: {
       title: "Privacidad y tratamiento de datos",
       summary:
-        "Solo su anfitrión ve sus respuestas. Almacenadas en RentTools.io — software de código abierto, solo HTTPS, sin rastreo.",
+        "Solo su anfitrión ve sus respuestas. Almacenadas en InnkeeperOS — software de código abierto, solo HTTPS, sin rastreo.",
       showDetails: "Detalles",
       hideDetails: "Ocultar",
       bullets: [
         {
           title: "Quién ve estos datos",
-          body: "Solo el anfitrión del alojamiento que ha reservado. Sus respuestas llegan directamente a su cuenta de RentTools. No se comparten, no se venden y no se utilizan con fines publicitarios.",
+          body: "Solo el anfitrión del alojamiento que ha reservado. Sus respuestas llegan directamente a su cuenta de InnkeeperOS. No se comparten, no se venden y no se utilizan con fines publicitarios.",
         },
         {
           title: "Dónde se almacenan",
-          body: "RentTools.io es una herramienta de código abierto — el código fuente es público, por lo que cualquiera puede verificar qué se hace con sus datos. La conexión con este formulario está cifrada por HTTPS.",
+          body: "InnkeeperOS es una herramienta de código abierto — el código fuente es público, por lo que cualquiera puede verificar qué se hace con sus datos. La conexión con este formulario está cifrada por HTTPS.",
         },
         {
           title: "Sin rastreo",
@@ -356,7 +356,7 @@ export const GUEST_UI_COPY: Record<GuestFormLocale, GuestUiCopy> = {
           body: "Puede pedir a su anfitrión que elimine sus respuestas en cualquier momento, o escribir al operador a support@renttools.io para cualquier consulta, solicitud de acceso o reclamación de privacidad.",
         },
       ],
-      fullPolicyLabel: "Política de privacidad completa de RentTools",
+      fullPolicyLabel: "Política de privacidad completa de InnkeeperOS",
       sourceLinkLabel: "código fuente en GitHub",
     },
   },

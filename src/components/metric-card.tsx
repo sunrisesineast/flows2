@@ -3,7 +3,7 @@
 import { useId, type ReactNode } from "react";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, GLASS_SURFACE } from "@/lib/utils";
 
 type Trend = "up" | "down" | "neutral";
 
@@ -86,7 +86,7 @@ export function MetricCard({
 
   if (compact) {
     return (
-      <Card className={cn("py-0", className)}>
+      <Card className={cn(GLASS_SURFACE, "py-0", className)}>
         <CardContent className="flex h-full flex-col p-4">
           <p className="text-sm text-muted-foreground">{title}</p>
           <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
@@ -110,7 +110,7 @@ export function MetricCard({
   }
 
   return (
-    <Card className={cn("py-0", className)}>
+    <Card className={cn(GLASS_SURFACE, "py-0", className)}>
       <CardContent className="flex items-stretch gap-4 p-5">
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <p className="text-sm text-muted-foreground">{title}</p>

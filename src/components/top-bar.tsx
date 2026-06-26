@@ -142,7 +142,7 @@ const COPY: Record<Locale, CopyShape> = {
   },
 };
 
-export type AppView = "dashboard" | "calendar" | "cleaning" | "sync" | "guest-form" | "guests" | "settings" | "tasks" | "reports" | "finance" | "profile";
+export type AppView = "dashboard" | "reservations" | "calendar" | "cleaning" | "sync" | "property-settings" | "guest-form" | "guests" | "settings" | "tasks" | "reports" | "finance" | "profile";
 
 interface GuestSearchResult {
   guestId: number;
@@ -369,7 +369,7 @@ export function TopBar({
                 </g>
               </svg>
             </div>
-            <span className="hidden sm:block text-[17px] font-semibold tracking-tight">RentTools</span>
+            <span className="hidden sm:block text-[17px] font-semibold tracking-tight">InnkeeperOS</span>
           </button>
 
           {/* Property selector */}
